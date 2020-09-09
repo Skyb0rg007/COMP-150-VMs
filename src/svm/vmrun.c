@@ -68,3 +68,4 @@ void vmrun(VMState vm, struct VMFunction *fun) {
       }
   }
 }
+
