@@ -7,24 +7,27 @@
 #ifndef VMSTATE_INCLUDED
 #define VMSTATE_INCLUDED
 
+#include <assert.h>
 #include <stdint.h>
 
 #include "value.h"
 #include "vtable.h"
+#include "utils/vector.h"
 
+/* Number of VM registers */
 #define NUM_REGISTERS 8
-#define NUM_LITERALS  (1 << 5)
-#define STORE_SIZE    (1 << 10)
+/* Hint for initial size of the globals table */
 #define HINT_NUM_GLOBALS 20
 
 typedef struct VMState *VMState;
 
 struct VMState {
-    Instruction *ip;
+    /* VM registers */
     Value registers[NUM_REGISTERS];
+    /* Global variables */
     VTable_T globals;
-    Value literals[NUM_LITERALS];
-    uint32_t num_literals;
+    /* The literal pool */
+    vector(Value) literals;
 };
 
 VMState newstate(void);       // allocate and initialize (to empty)
@@ -33,5 +36,23 @@ void freestatep(VMState *sp); // deallocate
 int literal_slot(VMState state, Value literal);
   // return index of literal in `literals`, adding if needed
   // (at need, can be postponed to module 2)
+
+static inline Value vmstate_get_lit(VMState vm, uint16_t index)
+{
+    assert(index < vector_size(&vm->literals));
+    return vector_at(&vm->literals, index);
+}
+
+static inline Value vmstate_get_reg(VMState vm, uint8_t index)
+{
+    assert(index < NUM_REGISTERS);
+    return vm->registers[index];
+}
+
+static inline void vmstate_set_reg(VMState vm, uint8_t index, Value x)
+{
+    assert(index < NUM_REGISTERS);
+    vm->registers[index] = x;
+}
 
 #endif /* VMSTATE_INCLUDED */

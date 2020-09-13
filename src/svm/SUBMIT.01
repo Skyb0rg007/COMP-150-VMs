@@ -2,31 +2,39 @@ COMP 150VM Homework Submission
 
 What person or group is submitting this homework?
 
-  - 
+  - Skye Soss
 
 Not counting code that was distributed to everyone, what code was
 contributed by other persons or groups?  Who were the contributors?
 
-  - 
+  - The Lab portion - Mert Erden
 
 What work are you proud of?
 
-  - 
+  - The implementation of `vmrun` using jump-tables, which is used in VMs like
+    Ruby and Python to speed up the interpreter.
 
 What code would you like help improving?
 
-  - 
+  - The code for the VMState, since code relies on some of the VM structure
+    members having a specific structure (ex. registers being an array), so abstracting
+    that into macros / inline functions would make refactoring easier.
+    In addition, I do eventually want to modify the implementation of `Value`s, so
+    abstracting all the helpers is very important (ex. never directly access struct fields).
 
 What code, if any, would you especially like the course staff to
 review?  Why?
 
-  -
+  - The beginning of `vmrun`. I'm unsure what I could be reasonably caching outside of what I am currently.
 
 For the first module, the instructor will present at a plenary code
 review.
 
   - In your group, who is willing to serve on the review panel?
+    Skye
 
   - What would you like the instructor to present at the code review?
     (Ideally, choose some distributed code that you don't understand
     or would like clarification on.)
+    vmstate.[ch]
+

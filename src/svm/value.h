@@ -64,6 +64,19 @@ typedef struct Value {
 
 ////////////////////////////////////////////////////////////////
 
+static inline bool value_truthy(Value x)
+{
+    switch (x.tag)
+    {
+        case Nil:
+            return false;
+        case Boolean:
+            return x.b;
+        default:
+            return true;
+    }
+}
+
 //////   creation/introduction for values
 
 extern struct Value nilValue;       // initialized statically

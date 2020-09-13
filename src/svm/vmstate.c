@@ -17,6 +17,7 @@
 void freestatep(VMState *sp) {
     assert(sp && *sp);
     VMState vm = *sp;
+    vector_free(&vm->literals);
     free(vm);
     *sp = NULL;
 }
@@ -24,21 +25,18 @@ void freestatep(VMState *sp) {
 VMState newstate(void) {
     VMState vm = malloc(sizeof *vm);
     assert(vm != NULL);
-    vm->ip = NULL;
     for (int i = 0; i < NUM_REGISTERS; i++) {
         vm->registers[i] = nilValue;
     }
     vm->globals = VTable_new(HINT_NUM_GLOBALS);
-    for (int i = 0; i < NUM_LITERALS; i++) {
-        vm->literals[i] = nilValue;
-    }
-    vm->num_literals = 0;
+    vector_init(&vm->literals);
     return vm;
 }
 
-int literal_slot(VMState state, Value literal) {
-    assert(state->num_literals < NUM_LITERALS);
-    state->literals[state->num_literals] = literal;
-    return state->num_literals++;
+int literal_slot(VMState vm, Value literal) {
+    Value *x = vector_emplace_back(&vm->literals);
+    assert(x != NULL);
+    *x = literal;
+    return vector_size(&vm->literals) - 1;
 }
 
