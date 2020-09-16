@@ -52,29 +52,32 @@ Value VTable_get(T table, Value key) {
 	return p ? p->value : nilValue;
 }
 
-Value VTable_put(T table, Value key, Value value) {
+void VTable_put(T table, Value key, Value value) {
 	int i;
 	struct binding *p;
 	Value prev;
 	assert(table);
-        if (value.tag == Nil)
-          return VTable_remove(table, key);
-	i = hashvalue(key)%table->size;
-	for (p = table->buckets[i]; p; p = p->link)
-		if (eqvalue(key, p->key))
-			break;
-	if (p == NULL) {
-		p = vmalloc(sizeof(*p));
-		p->key = key;
-		p->link = table->buckets[i];
-		table->buckets[i] = p;
-		table->length++;
-		prev = nilValue;
-	} else
-		prev = p->value;
-	p->value = value;
-	table->timestamp++;
-	return prev;
+        if (value.tag == Nil) {
+          VTable_remove(table, key);
+        } else {
+          i = hashvalue(key)%table->size;
+          for (p = table->buckets[i]; p; p = p->link)
+            if (eqvalue(key, p->key))
+              break;
+          if (p == NULL) {
+            p = vmalloc(sizeof(*p));
+            p->key = key;
+            p->link = table->buckets[i];
+            table->buckets[i] = p;
+            table->length++;
+            prev = nilValue;
+          } else
+            prev = p->value;
+          p->value = value;
+          table->timestamp++;
+          (void) prev;
+//	return prev;
+        }
 }
 int VTable_length(T table) {
 	assert(table);
@@ -96,7 +99,7 @@ int VTable_length(T table) {
 // 		}
 // }
 
-Value VTable_remove(T table, Value key) {
+void VTable_remove(T table, Value key) {
 	int i;
 	struct binding **pp;
 	assert(table);
@@ -105,13 +108,13 @@ Value VTable_remove(T table, Value key) {
 	for (pp = &table->buckets[i]; *pp; pp = &(*pp)->link)
 		if (eqvalue(key, (*pp)->key)) {
 			struct binding *p = *pp;
-			Value value = p->value;
+			// Value value = p->value;
 			*pp = p->link;
 			// FREE(p);
 			table->length--;
-			return value;
+//			// return value;
 		}
-	return nilValue;
+//	return nilValue;
 }
 //  void **VTable_toArray(T table, void *end) {
 //  	int i, j = 0;

@@ -127,6 +127,12 @@ fun predefinedFunctionError s = eprintln ("while reading predefined functions, "
 (* utility functions for string manipulation and printing S70f *)
 fun intString n =
   String.map (fn #"~" => #"-" | c => c) (Int.toString n)
+fun realString x =
+  if Real.== (x, real (Real.floor x)) then
+    intString (Real.floor x)
+  else
+    String.map (fn #"~" => #"-" | c => c) (Real.fmt (StringCvt.FIX (SOME 2)) x)
+
 (* utility functions for string manipulation and printing S70g *)
 fun plural what [x] = what
   | plural what _   = what ^ "s"
@@ -1106,7 +1112,7 @@ datatype exp = LITERAL of value
              | LAMBDA  of lambda
 and let_kind = LET | LETREC | LETSTAR
 and    value = SYM       of name
-             | NUM       of int
+             | NUM       of real
              | BOOLV     of bool   
              | NIL
              | LUANIL
@@ -1130,7 +1136,7 @@ datatype xdef = DEF    of def
               | DEFS   of def list  (*OMIT*)
 (* definition of [[valueString]] for \uscheme, \tuscheme, and \nml 306 *)
 fun valueString (SYM v)   = v
-  | valueString (NUM n)   = intString n
+  | valueString (NUM n)   = realString n
   | valueString (BOOLV b) = if b then "#t" else "#f"
   | valueString (NIL)     = "()"
   | valueString (LUANIL)     = "nil"
@@ -1181,15 +1187,8 @@ val _ = op expString        : exp   -> string
 (*                                                               *)
 (*****************************************************************)
 
-(* utility functions on \uscheme, \tuscheme, and \nml\ values 307a *)
-fun embedInt n = NUM n
-fun projectInt (NUM n) = n
-  | projectInt v =
-      raise RuntimeError ("value " ^ valueString v ^ " is not an integer")
-(* type declarations for consistency checking *)
-val _ = op embedInt   : int   -> value
-val _ = op projectInt : value -> int
 (* utility functions on \uscheme, \tuscheme, and \nml\ values 307b *)
+val embedInt = NUM o Real.fromInt
 fun embedBool b = BOOLV b
 fun projectBool (BOOLV false) = false
   | projectBool (LUANIL)      = false
@@ -1203,7 +1202,7 @@ fun embedList []     = NIL
 (* utility functions on \uscheme, \tuscheme, and \nml\ values S207d *)
 fun equalatoms (NIL,      NIL    )  = true
   | equalatoms (LUANIL,   LUANIL )  = true
-  | equalatoms (NUM  n1,  NUM  n2)  = (n1 = n2)
+  | equalatoms (NUM  n1,  NUM  n2)  = Real.== (n1, n2)
   | equalatoms (SYM  v1,  SYM  v2)  = (v1 = v2)
   | equalatoms (BOOLV b1, BOOLV b2) = (b1 = b2)
   | equalatoms  _                   = false
@@ -1231,7 +1230,7 @@ fun cycleThrough xs =
         next
   end
 val unspecified =
-  cycleThrough [BOOLV true, NUM 39, SYM "this value is unspecified", NIL,
+  cycleThrough [BOOLV true, NUM 39.0, SYM "this value is unspecified", NIL,
                 PRIMITIVE (fn _ => let exception Unspecified in raise
                                                                Unspecified end)]
 (* type declarations for consistency checking *)
@@ -1334,7 +1333,7 @@ val _ = op usageParsers : (string * 'a parser) list -> 'a parser
 (* parsers and parser builders for \scheme-like syntax S218a *)
 fun sexp tokens = (
      SYM       <$> (notDot <$>! @@ any_name)
- <|> NUM       <$> int
+ <|> embedInt  <$> int
  <|> embedBool <$> booltok
  <|> leftCurly <!> "curly brackets may not be used in S-expressions"
  <|> embedList <$> bracket ("list of S-expressions", many sexp)
@@ -1348,7 +1347,7 @@ and notDot (loc, ".") =
 val _ = op sexp : value parser
 (* parsers and parser builders for \scheme-like syntax S218b *)
 fun atomicSchemeExpOf name =  VAR                   <$> name
-                          <|> LITERAL <$> NUM       <$> int
+                          <|> LITERAL <$> embedInt  <$> int
                           <|> LITERAL <$> embedBool <$> booltok
 (* parsers and parser builders for \scheme-like syntax S219a *)
 fun fullSchemeExpOf atomic keywordsOf =
@@ -1900,31 +1899,31 @@ fun arithOp f = binaryOp (fn (NUM n1, NUM n2) => NUM (f (n1, n2))
                            | (NUM n, v) =>
                                        (* report [[v]] is not an integer 312d *)
                                            raise RuntimeError (
-                                "expected an integer, but got " ^ valueString v)
+                                "expected a number, but got " ^ valueString v)
                            | (v, _)     =>
                                        (* report [[v]] is not an integer 312d *)
                                            raise RuntimeError (
-                                "expected an integer, but got " ^ valueString v)
+                                "expected a number, but got " ^ valueString v)
                          )
 (* type declarations for consistency checking *)
-val _ = op arithOp: (int * int -> int) -> (value list -> value)
+val _ = op arithOp: (real * real -> real) -> (value list -> value)
 (* utility functions for building primitives in \uscheme 312c *)
 fun predOp f     = unaryOp  (embedBool o f)
 fun comparison f = binaryOp (embedBool o f)
-fun intcompare f = comparison (fn (NUM n1, NUM n2) => f (n1, n2)
+fun realcompare f = comparison (fn (NUM n1, NUM n2) => f (n1, n2)
                                 | (NUM n, v) =>
-                                       (* report [[v]] is not an integer 312d *)
+                                       (* report [[v]] is not a number 312d *)
                                                 raise RuntimeError (
-                                "expected an integer, but got " ^ valueString v)
+                                "expected a number, but got " ^ valueString v)
                                 | (v, _)     =>
-                                       (* report [[v]] is not an integer 312d *)
+                                       (* report [[v]] is not a number 312d *)
                                                 raise RuntimeError (
-                                "expected an integer, but got " ^ valueString v)
+                                "expected a number, but got " ^ valueString v)
                               )
 (* type declarations for consistency checking *)
 val _ = op predOp     : (value         -> bool) -> (value list -> value)
 val _ = op comparison : (value * value -> bool) -> (value list -> value)
-val _ = op intcompare : (int   * int   -> bool) -> (value list -> value)
+val _ = op realcompare : (real   * real   -> bool) -> (value list -> value)
 (* utility functions for building primitives in \uscheme S209e *)
 fun errorPrimitive (_, [v]) = raise RuntimeError (valueString v)
   | errorPrimitive (e, vs)  = inExp (arityError 1) (e, vs)
@@ -1938,10 +1937,10 @@ val primitiveBasis =
                         ("+", arithOp op +  ) :: 
                         ("-", arithOp op -  ) :: 
                         ("*", arithOp op *  ) :: 
-                        ("/", arithOp op div) ::
+                        ("/", arithOp op /  ) ::
                         (* primitives for \uscheme\ [[::]] 312e *)
-                        ("<", intcompare op <) :: 
-                        (">", intcompare op >) ::
+                        ("<", realcompare op <) :: 
+                        (">", realcompare op >) ::
                         ("=", comparison equalatoms) ::
                         ("nil?",    predOp (fn (LUANIL ) => true | _ => false))
                                                                               ::
@@ -1978,13 +1977,13 @@ val primitiveBasis =
                                                                   "\n"); v))) ::
                         ("print",   unaryOp (fn v => (print (valueString v);
                                                                          v))) ::
-                        ("printu",  unaryOp (fn NUM n => (printUTF8 n; NUM n)
+                        ("printu",  unaryOp (fn NUM n => (printUTF8 (Real.floor n); NUM n)
                                               | v => raise RuntimeError (
                                                                  valueString v ^
 
                                             " is not a Unicode code point"))) ::
                         (* primitives for \uscheme\ [[::]] S209d *)
-                        ("hash",  unaryOp (fn SYM s => NUM (fnvHash s)
+                        ("hash",  unaryOp (fn SYM s => embedInt (fnvHash s)
                                             | v => raise RuntimeError (
                                                                  valueString v ^
 

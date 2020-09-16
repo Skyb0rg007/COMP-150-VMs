@@ -140,8 +140,8 @@ struct VMBlock {
 struct VMFunction {
   // Note: as yet, lacks GC support
   int arity; // number of args expected
-  int nregs; // one more than the number of highest register read or written
   int size;  // number of instructions
+  int nregs; // one more than the number of highest register read or written
   Instruction instructions[];
 };
 

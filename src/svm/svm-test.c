@@ -37,5 +37,5 @@ int main(int argc, char **argv) {
     freestatep(&vm);
     heap_shutdown();
     Vmstring_finish();
-    return 0;
+    return EXIT_SUCCESS;
 }

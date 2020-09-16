@@ -47,3 +47,5 @@
 /bin/svm-test
 /bin/vscheme
 /bin/vschemem
+/bin/svm-debug-test
+/bin/svm-loader-instructions
