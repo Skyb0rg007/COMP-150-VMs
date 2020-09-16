@@ -29,11 +29,7 @@ end
 structure ObjectUnparser :> sig
   (* emit on-disk loader language *)
   val unparse : ObjectCode.instr list -> string list 
-<<<<<<< HEAD
-     (* emits ".load program" with the right size *)
-=======
      (* emits ".load module" with the right size *)
->>>>>>> upstream/master
 end
   =
 struct
