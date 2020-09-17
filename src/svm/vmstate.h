@@ -37,6 +37,8 @@ int literal_slot(VMState state, Value literal);
   // return index of literal in `literals`, adding if needed
   // (at need, can be postponed to module 2)
 
+#define literal_value(vm, index) vmstate_get_lit(vm, index)
+
 static inline Value vmstate_get_lit(VMState vm, uint16_t index)
 {
     assert(index < vector_size(&vm->literals));

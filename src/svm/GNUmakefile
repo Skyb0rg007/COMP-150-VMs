@@ -23,7 +23,7 @@ DEPS := $(OBJ:.o=.d)
 
 CPPFLAGS += -MMD -MP
 
-CFLAGS = -std=c11 -pedantic -Wall -Wextra -Werror -g -I/usr/include
+CFLAGS = -std=c11 -pedantic -Wall -Wextra -g -I/usr/include
 
 .PHONY: all obj clean
 all: $(EXE)
@@ -51,7 +51,7 @@ $(BIN)/svm-loader-instructions: $(OBJ) $(BUILD)/svm-loader-instructions.o
 	gcc $(CFLAGS) -o $@ $^ -lm
 
 $(BUILD)/%.o: %.c
-	gcc $(CFLAGS) -MMD -MF $(BUILD)/$*.d -o $@ -c -Wall -Werror -std=c11 $<
+	gcc $(CFLAGS) -MMD -MF $(BUILD)/$*.d -o $@ -c -Wall -std=c11 $<
 
 
 -include $(DEPS)

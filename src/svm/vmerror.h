@@ -16,9 +16,9 @@
 
 // Checked run-time errors: print a message and halt the computation.
 
-extern _Noreturn void typeerror(VMState state, const char *expected, Value got,
+extern noreturn void typeerror(VMState state, const char *expected, Value got,
                                 const char *file, int line);
-extern _Noreturn void runerror(VMState state, const char *format, ...);
+extern noreturn void runerror(VMState state, const char *format, ...);
   // takes arguments as for `printf`, not `print`
 
 #endif

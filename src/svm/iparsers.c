@@ -8,6 +8,7 @@
 #include "iformat.h"
 #include "iparsers.h"
 #include "vmstate.h"
+#include "vmstring.h"
 
 #define SEE(R) do { if ((R) > *maxreg) *maxreg = (R); } while(0)
 
@@ -89,11 +90,44 @@ static void initnames(void) {
   }
 }
 
-static uint16_t parseliteral(VMState vm, Tokens literal, const char *buffer)
+static Value tokens_get_literal(Tokens *p, const char *original)
 {
-    switch (first_token_type(literal))
-    {
-        
+    switch (first_token_type(*p)) {
+        case TNAME: {
+            Name name = tokens_get_name(p, original);
+            if (name == truename)
+                return mkBooleanValue(true);
+            if (name == falsename)
+                return mkBooleanValue(false);
+            if (name == nilname)
+                return nilValue;
+            if (name == emptyname)
+                return emptylistValue;
+            if (name == stringname) {
+                uint32_t len = tokens_get_int(p, original);
+                char *buf = malloc(len);
+                assert(buf != NULL);
+                for (uint32_t i = 0; i < len; i++)
+                    buf[i] = (char)tokens_get_byte(p, original);
+                VMString vmstr = Vmstring_new(buf, len);
+                free(buf);
+                return mkStringValue(vmstr);
+            }
+            if (name == functionname) {
+                assert(!"Functions not implemented");
+            }
+        }
+        case TU32: {
+            uint32_t n = tokens_get_int(p, original);
+            return mkNumberValue((double)n);
+        }
+        case TDOUBLE: {
+            double n = tokens_get_number(p, original);
+            return mkNumberValue(n);
+        }
+        default: {
+            assert(!"Parsing error");
+        }
     }
 }
 
