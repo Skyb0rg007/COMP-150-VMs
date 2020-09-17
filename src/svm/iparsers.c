@@ -9,7 +9,6 @@
 #include "iparsers.h"
 #include "vmstate.h"
 
-
 #define SEE(R) do { if ((R) > *maxreg) *maxreg = (R); } while(0)
 
 Instruction parseR3(VMState vm, Opcode opcode, Tokens operands, unsigned *maxreg) {
@@ -90,7 +89,13 @@ static void initnames(void) {
   }
 }
 
-
+static uint16_t parseliteral(VMState vm, Tokens literal, const char *buffer)
+{
+    switch (first_token_type(literal))
+    {
+        
+    }
+}
 
 Instruction parseR1LIT(VMState vm, Opcode opcode, Tokens operands, unsigned *maxreg) {
   initnames(); // before comparing names, you must call this function
