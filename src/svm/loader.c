@@ -60,9 +60,27 @@ static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input)
 
 
 static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input) {
-  (void) vm; (void) arity; (void) count; (void) input; // replace with real code
-  (void) parse_instruction; // replace with real code
-  assert(0);
+
+    struct VMFunction *fun = vmalloc(sizeof *fun + count * sizeof(Instruction));
+    assert(fun);
+    unsigned maxreg;
+
+    for (int i = 0; i < count; i++) {
+        char *buffer;
+        size_t bufsize;
+        if (getline(&buffer, &bufsize, input) < 0) {
+            assert(0);
+        }
+        Tokens operands = tokens(buffer);
+        Name opcode = tokens_get_name(&operands, buffer);
+        Instruction instr = parse_instruction(vm, opcode, operands, &maxreg);
+        fun->instructions[i] = instr;
+    }
+
+    fun->arity = arity;
+    fun->size = count;
+    fun->nregs = maxreg + 1;
+    return fun;
 }
 
 

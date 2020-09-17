@@ -15,7 +15,7 @@
 #include "utils/vector.h"
 
 /* Number of VM registers */
-#define NUM_REGISTERS 8
+#define NUM_REGISTERS 200
 /* Hint for initial size of the globals table */
 #define HINT_NUM_GLOBALS 20
 

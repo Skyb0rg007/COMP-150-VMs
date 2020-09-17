@@ -116,6 +116,7 @@ static Value tokens_get_literal(Tokens *p, const char *original)
             if (name == functionname) {
                 assert(!"Functions not implemented");
             }
+            assert(0);
         }
         case TU32: {
             uint32_t n = tokens_get_int(p, original);
@@ -133,6 +134,10 @@ static Value tokens_get_literal(Tokens *p, const char *original)
 
 Instruction parseR1LIT(VMState vm, Opcode opcode, Tokens operands, unsigned *maxreg) {
   initnames(); // before comparing names, you must call this function
-  (void)vm; (void)opcode; (void)operands; (void)maxreg; // replace with real code!
-  assert(0);
+  uint8_t reg = tokens_get_byte(&operands, NULL);
+  Value literal = tokens_get_literal(&operands, NULL);
+  uint16_t lit_index = literal_slot(vm, literal);
+  assert(operands == NULL);
+  SEE(reg);
+  return eR1U16(opcode, reg, lit_index);
 }
