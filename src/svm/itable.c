@@ -60,7 +60,7 @@ void itable_dump(FILE *fp) {
   }
 
   for (int i = 0; i < number_of_instructions; i++) {
-    fprintf(fp, instructions[i].string);
+    fprintf(fp, "%s", instructions[i].string);
     for (int n = strlen(instructions[i].string); n < len; n++)
       fputc(' ', fp);
     fprintf(fp, "  %s%s\n", instructions[i].doco,
