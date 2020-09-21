@@ -17,6 +17,17 @@ instruction_info instructions[] = {
   { "loadliteral", LoadLiteral, parseR1LIT, "rX := LIT" },
   { "check", Check, parseR1LIT, "check rX, LIT" },
   { "expect", Expect, parseR1LIT, "expect rX, LIT" },
+  { "add", Add, parseR3, "rX := rY + rZ" }, { "+", Add, parseR3, "rX := rY + rZ" },
+  { "loadliteral", LoadLiteral, parseR1LIT, "rX := LIT" },
+  { "goto", Goto, parseR0I24, "ip += XYZ" },
+  { "if", If, parseR1, "if (rX) ip++" },
+  { "getglobal", GetGlobal, parseR2, "rX := _G[rY]" },
+  { "setglobal", SetGlobal, parseR2, "_G[rX] := rY" },
+  { "div", Divide, parseR3, "rX := rY / rZ" }, { "/", Divide, parseR3, "rX := rY / rZ" },
+  { "sub", Subtract, parseR3, "rX := rY - rZ" }, { "-", Subtract, parseR3, "rX := rY - rZ" },
+  { "mul", Multiply, parseR3, "rX := rY * rZ" }, { "*", Multiply, parseR3, "rX := rY * rZ" },
+  { "abs", Abs, parseR2, "rX := abs(rY)" },
+  { "hash", Hash, parseR2, "rX := hash(rY)" },
 };
 
 int number_of_instructions = sizeof(instructions) / sizeof(instructions[0]);

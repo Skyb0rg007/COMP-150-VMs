@@ -15,8 +15,15 @@ typedef enum opcode {
     Expect,      // R1LIT -- expect(R(X), L(YZ))
     Add,         // R3    -- R(X) := R(Y) + R(Z)
     LoadLiteral, // R1LIT -- R(X) := L(YZ)
-    Goto,        // R0124 -- ip += XYZ
+    Goto,        // R0I24 -- ip += XYZ
     If,          // R1    -- if (truthy(R(X))) { ip++; }
+    GetGlobal,   // R1LIT -- R(X) := _G[LIT]
+    SetGlobal,   // R1LIT -- _G[LIT] := R(X)
+    Divide,      // R3    -- R(X) := R(Y) / R(Z)
+    Subtract,    // R3    -- R(X) := R(Y) - R(Z)
+    Multiply,    // R3    -- R(X) := R(Y) * R(Z)
+    Abs,         // R2    -- R(X) := |R(Y)|
+    Hash,        // R2    -- R(X) := hash(R(Y))
     Unimp,       // stand-in for opcodes not yet implemented
                  // used to query number of opcodes, so must be last
 } Opcode;

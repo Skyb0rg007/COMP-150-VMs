@@ -3,7 +3,10 @@
 // In module 2, you add parsers `parseR1LIT` to this file.
 // The other parsers may serve as examples you can build on.
 
+#define _GNU_SOURCE
+
 #include <assert.h>
+#include <stdio.h>
 
 #include "iformat.h"
 #include "iparsers.h"
@@ -77,7 +80,7 @@ Instruction parseR0I24(VMState vm, Opcode opcode, Tokens operands, unsigned *max
 }
 
 
-static Name truename, falsename, nilname, emptyname, stringname, functionname;
+static Name truename, falsename, nilname, emptyname, stringname;
 
 static void initnames(void) {
   if (truename == NULL) {
@@ -86,7 +89,6 @@ static void initnames(void) {
     nilname      = strtoname("nil");
     emptyname    = strtoname("emptylist");
     stringname   = strtoname("string");
-    functionname = strtoname("function");
   }
 }
 
@@ -112,9 +114,6 @@ static Value tokens_get_literal(Tokens *p, const char *original)
                 VMString vmstr = Vmstring_new(buf, len);
                 free(buf);
                 return mkStringValue(vmstr);
-            }
-            if (name == functionname) {
-                assert(!"Functions not implemented");
             }
             assert(0);
         }

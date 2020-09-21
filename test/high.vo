@@ -1,0 +1,6 @@
+.load module 3
+.load 1 function 0 2
+print 1
+halt
+print 1
+halt

@@ -61,24 +61,36 @@ static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input)
 
 static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input) {
 
-    struct VMFunction *fun = vmalloc(sizeof *fun + count * sizeof(Instruction));
+    struct VMFunction *fun = vmalloc(sizeof *fun + (count + 1) * sizeof(Instruction));
     assert(fun);
-    unsigned maxreg;
-
+    unsigned maxreg = 0;
     for (int i = 0; i < count; i++) {
-        char *buffer;
-        size_t bufsize;
+        char *buffer = NULL;
+        size_t bufsize = 0;
         if (getline(&buffer, &bufsize, input) < 0) {
             assert(0);
         }
         Tokens operands = tokens(buffer);
         Name opcode = tokens_get_name(&operands, buffer);
-        Instruction instr = parse_instruction(vm, opcode, operands, &maxreg);
+        Instruction instr;
+        if (opcode == strtoname(".load")) {
+            uint8_t reg = tokens_get_byte(&operands, buffer);
+            Name f = tokens_get_name(&operands, buffer);
+            assert(f == strtoname("function"));
+            uint32_t arity = tokens_get_int(&operands, buffer);
+            uint32_t len = tokens_get_int(&operands, buffer);
+            struct VMFunction *func = loadfun(vm, arity, len, input);
+            int func_lit = literal_slot(vm, mkVMFunctionValue(func));
+            instr = eR1U16(LoadLiteral, reg, func_lit);
+        } else {
+            instr = parse_instruction(vm, opcode, operands, &maxreg);
+        }
         fun->instructions[i] = instr;
     }
+    fun->instructions[count] = Halt;
 
     fun->arity = arity;
-    fun->size = count;
+    fun->size = count + 1;
     fun->nregs = maxreg + 1;
     return fun;
 }

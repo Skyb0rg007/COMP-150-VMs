@@ -1,0 +1,6 @@
+.load module 5
+loadliteral 1 1234
+loadliteral 2 1234
+check  1 string 9 118 97 114 105 97 98 108 101 49
+expect 2 string 9 118 97 114 105 97 98 108 101 50
+halt

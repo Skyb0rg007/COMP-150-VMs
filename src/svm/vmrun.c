@@ -51,7 +51,14 @@ void vmrun(VMState vm, struct VMFunction *fun) {
         [Add] = &&do_add,
         [LoadLiteral] = &&do_load_literal,
         [Goto] = &&do_goto,
-        [If] = &&do_if
+        [If] = &&do_if,
+        [GetGlobal] = &&do_get_global,
+        [SetGlobal] = &&do_set_global,
+        [Divide] = &&do_divide,
+        [Subtract] = &&do_subtract,
+        [Multiply] = &&do_multiply,
+        [Abs] = &&do_abs,
+        [Hash] = &&do_hash
     };
     /* Increments the instruction pointer, jumping to the label in the jump table */
     #define DISPATCH() do {            \
@@ -121,6 +128,83 @@ do_if:
             uint8_t reg = uX(i);
             if (!value_truthy(vmstate_get_reg(vm, reg)))
                 ip++;
+            DISPATCH();
+        }
+do_get_global:
+        {
+            uint8_t reg = uX(i);
+            uint8_t lit = uYZ(i);
+            Value g = VTable_get(vm->globals, vmstate_get_lit(vm, lit));
+            vmstate_set_reg(vm, reg, g);
+            DISPATCH();
+        }
+do_set_global:
+        {
+            uint8_t reg = uX(i);
+            uint8_t lit = uYZ(i);
+            VTable_put(vm->globals,
+                    vmstate_get_lit(vm, lit),
+                    vmstate_get_reg(vm, reg));
+            DISPATCH();
+        }
+do_divide:
+        {
+            uint8_t reg1 = uX(i);
+            uint8_t reg2 = uY(i);
+            uint8_t reg3 = uZ(i);
+            vmstate_set_reg(
+                    vm,
+                    reg1,
+                    mkNumberValue(
+                        AS_NUMBER(vm, vmstate_get_reg(vm, reg2))
+                        / AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
+            DISPATCH();
+        }
+do_subtract:
+        {
+            uint8_t reg1 = uX(i);
+            uint8_t reg2 = uY(i);
+            uint8_t reg3 = uZ(i);
+            vmstate_set_reg(
+                    vm,
+                    reg1,
+                    mkNumberValue(
+                        AS_NUMBER(vm, vmstate_get_reg(vm, reg2))
+                        - AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
+            DISPATCH();
+        }
+do_multiply:
+        {
+            uint8_t reg1 = uX(i);
+            uint8_t reg2 = uY(i);
+            uint8_t reg3 = uZ(i);
+            vmstate_set_reg(
+                    vm,
+                    reg1,
+                    mkNumberValue(
+                        AS_NUMBER(vm, vmstate_get_reg(vm, reg2))
+                        * AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
+            DISPATCH();
+        }
+do_abs:
+        {
+            uint8_t reg1 = uX(i);
+            uint8_t reg2 = uY(i);
+            vmstate_set_reg(
+                    vm,
+                    reg1,
+                    mkNumberValue(
+                        fabs(AS_NUMBER(vm, vmstate_get_reg(vm, reg2)))));
+            DISPATCH();
+        }
+do_hash:
+        {
+            uint8_t reg1 = uX(i);
+            uint8_t reg2 = uY(i);
+            vmstate_set_reg(
+                    vm,
+                    reg1,
+                    mkNumberValue(hashvalue(vmstate_get_reg(vm, reg2))));
             DISPATCH();
         }
     }
