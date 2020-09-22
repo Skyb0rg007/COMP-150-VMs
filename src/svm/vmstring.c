@@ -56,19 +56,26 @@ bool Vmstring_eqlong(VMString a, VMString b) {
 static uint32_t seed = 0x00beef00;
   // note vulnerability to DoS attack: https://stackoverflow.com/questions/9241230
 
-uint32_t Vmstring_hash(const char *str, size_t l) {
+uint32_t Vmstring_hash_bytes(const char *str, size_t l) {
   // straight outta Lua
   unsigned int h = seed ^ (unsigned int) l;
   size_t step = stepsize(l);
   for (; l >= step; l -= step)
     h ^= ((h<<5) + (h>>2) + (unsigned char)(str[l - 1]));
+  assert(h != 0);
   return h;
+}
+
+uint32_t Vmstring_hash_slow(VMString s) {
+  if (s->hash == 0)
+    s->hash = Vmstring_hashlong(s);
+  return s-> hash;
 }
 
 uint32_t Vmstring_hashlong(VMString hs) {
   assert(islong(hs));
   if (hs->hash == 0) {  /* no hash? */
-    hs->hash = Vmstring_hash(bytes(hs), hs->length);
+    hs->hash = Vmstring_hash_bytes(bytes(hs), hs->length);
     if (hs->hash == 0)
       hs->hash = 0xfeeb; // the hash is there now
   }
@@ -144,7 +151,7 @@ void Vmstring_remove (VMString hs) {
 static VMString intern_short(const char *str, size_t len, VMString alloced) {
   // returns existing copy or creates a new one
   assert(!islonglen(len));
-  uint32_t h = Vmstring_hash(str, len);
+  uint32_t h = Vmstring_hash_bytes(str, len);
   VMString *list = &tb.buckets[h % tb.nbuckets];
   assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
   for (VMString hs = *list;

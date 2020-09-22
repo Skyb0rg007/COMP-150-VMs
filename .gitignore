@@ -49,3 +49,6 @@
 /bin/vschemem
 /bin/svm-debug-test
 /bin/svm-loader-instructions
+/bin/uft.opt
+/bin/uft
+*.mlb

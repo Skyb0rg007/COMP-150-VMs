@@ -1929,6 +1929,7 @@ fun errorPrimitive (_, [v]) = raise RuntimeError (valueString v)
   | errorPrimitive (e, vs)  = inExp (arityError 1) (e, vs)
 (* type declarations for consistency checking *)
 val _ = op errorPrimitive : exp * value list -> value list
+fun idiv (x, y) = real (Real.floor x div Real.floor y)
 val primitiveBasis =
   let val rho =
         foldl (fn ((name, prim), rho) => bind (name, ref (PRIMITIVE (inExp prim)
@@ -1938,6 +1939,7 @@ val primitiveBasis =
                         ("-", arithOp op -  ) :: 
                         ("*", arithOp op *  ) :: 
                         ("/", arithOp op /  ) ::
+                        ("idiv", arithOp idiv  ) ::
                         (* primitives for \uscheme\ [[::]] 312e *)
                         ("<", realcompare op <) :: 
                         (">", realcompare op >) ::

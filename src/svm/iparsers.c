@@ -84,11 +84,11 @@ static Name truename, falsename, nilname, emptyname, stringname;
 
 static void initnames(void) {
   if (truename == NULL) {
-    truename   = strtoname("true");
-    falsename  = strtoname("false");
-    nilname    = strtoname("nil");
-    emptyname  = strtoname("emptylist");
-    stringname = strtoname("string");
+    truename     = strtoname("true");
+    falsename    = strtoname("false");
+    nilname      = strtoname("nil");
+    emptyname    = strtoname("emptylist");
+    stringname   = strtoname("string");
   }
 }
 

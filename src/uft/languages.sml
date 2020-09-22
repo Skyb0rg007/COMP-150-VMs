@@ -1,5 +1,11 @@
+(* All the languages we'll eventually translate, 
+    and the order in which they can be translated *)
+
+(* You'll need to use the signature, 
+    but don't need to look at the implementation *)
+
 structure Languages :> sig
-  datatype language = HOX | HO | FOX | FO | CL | KN | VS | VO
+  datatype language = HOX | HO | FO | CL | KN | VS | VO
   val table : { language : language, short : string, description : string } list
 
   val find : string -> language option
@@ -8,19 +14,18 @@ structure Languages :> sig
 end
   =
 struct
-  datatype language = HOX | HO | FOX | FO | CL | KN | VS | VO
+  datatype language = HOX | HO | FO | CL | KN | VS | VO
 
   fun inject (l, s, d) = { language = l, short = s, description = d }
 
   val table = map inject
     [ (HOX, "ho!", "Higher-order vScheme with mutation")
     , (HO,  "ho",  "Pure, higher-order vScheme")
-    , (FOX, "fo!", "First-order vScheme with mutation")
     , (FO,  "fo",  "Pure, first-order vScheme")
     , (CL,  "cl",  "Pure, first-order vScheme with closure and capture forms")
     , (KN,  "kn",  "K-Normal form")
     , (VS,  "vs",  "VM assembly language")
-    , (VO,  "vo",  "VM object code (loader language)")
+    , (VO,  "vo",  "VM object code")
     ]
 
 
@@ -34,8 +39,7 @@ struct
     | pred VS  = SOME KN
     | pred KN  = SOME CL
     | pred CL  = SOME FO
-    | pred FO  = SOME FOX
-    | pred FOX = SOME HO
+    | pred FO  = SOME HO
     | pred HO  = SOME HOX
     | pred HOX = NONE
 

@@ -1,0 +1,41 @@
+group is
+  $/basis.cm
+
+  (***** basic infrastructure *****)
+
+  impossible.cm   (* analog of assertion failure *)
+
+  env.sml         (* environment abstraction *)
+
+  (***** all the languages we'll eventually translate ****)
+
+  languages.sml   (* the languages, their names, mnemonic descriptions *)
+
+
+  (***** ASSEMBLY LANGUAGE and OBJECT CODE ********)
+
+  (* representations of assembly code and object code *)
+
+  object-code.sml  (* virtual object code: internal form and an unparser *)
+  asm.sml          (* SVM assembly language, internal form only *)
+
+
+  (* error monad *)
+
+  error-sig.sml
+  error-module.sml
+
+  (* "producer" interface [parsing combinators] *)
+
+  producer-sig.sml
+  producer-functor.sml
+
+
+
+  asmlex.sml     (* lexer for assembly code, provided with module 3 *)
+  asmparse.sml   (* assembly parser, built in modules 3 & 4, template provided *)
+  assembler.sml  (* Assembler, built in module 4, not provided *)
+
+
+  ioutil.sml
+  uft.sml

@@ -1,3 +1,8 @@
+(* Handy functions for handling internal errors in our translator 
+    (note this is not the same as the Error monad) *)
+
+(* You'll need to use the signature *)
+
 structure Impossible = struct
   exception Impossible of string
   fun impossible msg =

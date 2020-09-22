@@ -1,3 +1,8 @@
+(* Representation of environments *)
+
+(* You'll need to use the signature, 
+    but don't need to look at the implementation *)
+
 structure Env :> sig
   type name = string
   exception NotFound of name

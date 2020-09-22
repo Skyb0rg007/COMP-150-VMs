@@ -30,11 +30,11 @@
 //   - Given an opcode, find a parser
 
 typedef struct instruction_info {
-  const char *string;  // human-readable name
-  Opcode opcode;
+  const char *string;              // name used in virtual object code
+  Opcode opcode;                   // name used in `vmrun`
   InstructionParser parser;
-  const char *doco;  // human-readable explanation
-  Name name;         // for use at load time
+  const char *unparsing_template;  // used for disassembly (`disasm`)
+  Name name;                       // == strtoname(string)
 } instruction_info;
 
 void itable_init(void);

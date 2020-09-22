@@ -63,7 +63,7 @@ void itable_dump(FILE *fp) {
     fprintf(fp, "%s", instructions[i].string);
     for (int n = strlen(instructions[i].string); n < len; n++)
       fputc(' ', fp);
-    fprintf(fp, "  %s%s\n", instructions[i].doco,
+    fprintf(fp, "  %s%s\n", instructions[i].unparsing_template,
             instructions[i].opcode == Unimp ? " (not yet implemented)" : "");
   }
 

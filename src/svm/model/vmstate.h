@@ -28,13 +28,11 @@ typedef struct VMState *VMState;
 struct VMState {
     struct VMFunction *running; // currently running function
     int pc;               // index of instruction about to run
+    int nlits;            // number of literal slots in use
     struct VTable_T *globals;
     Value registers[NREGS];
     Value literals[LITSIZE];
-    int nlits;            // number of literal slots in use
 };
-
-// unused blocks in struct OK, only a small number will ever be allocated
 
 VMState newstate(void);       // allocate and initialize (to empty)
 void freestatep(VMState *sp); // deallocate

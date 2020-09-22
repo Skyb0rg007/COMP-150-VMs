@@ -33,6 +33,8 @@ static inline size_t Vmstring_objsize(size_t len) {
   // accounts for the hidden terminating '\0'
 }
 
+//// MEMORY MANAGEMENT: Memory allocated by functions in this interface
+//// is allocated on the VM heap and is meant to be garbage collected.
 
 //// initialization and finalization
 
@@ -73,8 +75,22 @@ VMString Vmstring_of_buffer(StringBuffer *bp);
 
 //// hashing
 
-uint32_t Vmstring_hash(const char *s, size_t len);
+uint32_t Vmstring_hashbytes(const char *s, size_t len);
 uint32_t Vmstring_hashlong(VMString s); // done on demand for long string?
+static inline uint32_t Vmstring_hash(VMString s);
+
+
+///////////////////////////// implementation below ////////////////
+
+extern uint32_t Vmstring_hash_slow(VMString s);
+
+static inline uint32_t Vmstring_hash(VMString s) {
+  if (s->hash)
+    return s->hash;
+  else
+    return Vmstring_hash_slow(s);
+}
+
 
 
 #endif

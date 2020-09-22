@@ -1,3 +1,7 @@
+(* A basic representation of object code *)
+
+(* You'll need to understand what's going on here and how it's used *)
+
 structure ObjectCode = struct
     datatype literal = INT of int
                      | REAL of real
@@ -27,40 +31,43 @@ end
 
 
 structure ObjectUnparser :> sig
-  (* emit on-disk loader language *)
-  val unparse : ObjectCode.instr list -> string list 
+  (* emit on-disk form of virtual object code *)
+  val program : ObjectCode.instr list -> string list 
      (* emits ".load module" with the right size *)
+
+  val literal : ObjectCode.literal -> string list 
+    (* tokens of a literal in virtual object code *)
 end
   =
 struct
-  structure L = ObjectCode
+  structure O = ObjectCode
   val concatSp = String.concatWith " "
   val fixSign = String.map (fn #"~" => #"-" | c => c) 
   val int = fixSign o Int.toString
 
-  fun parts (L.INT n) = [int n]
-    | parts (L.REAL x) = [fixSign (Real.toString x)]
-    | parts (L.BOOL b) = [if b then "true" else "false"]
-    | parts (L.EMPTYLIST) = ["emptylist"]
-    | parts (L.NIL) = ["nil"]
-    | parts (L.STRING s) =
+  fun literal (O.INT n) = [int n]
+    | literal (O.REAL x) = [fixSign (Real.toString x)]
+    | literal (O.BOOL b) = [if b then "true" else "false"]
+    | literal (O.EMPTYLIST) = ["emptylist"]
+    | literal (O.NIL) = ["nil"]
+    | literal (O.STRING s) =
         let val codes = (map Char.ord o explode) s
         in  "string" :: int (length codes) :: map int codes
         end
 
-  fun instr (L.REGS (opr, rs))   = concatSp (opr :: map int rs)
-    | instr (L.REGSLIT (opr, rs, v))   = concatSp (opr :: map int rs @ parts v)
-    | instr (L.GOTO offset) = concatSp ["goto", int offset]
-    | instr (L.REGINT (opr, r1, r2, offset)) =
+  fun instr (O.REGS (opr, rs))   = concatSp (opr :: map int rs)
+    | instr (O.REGSLIT (opr, rs, v))   = concatSp (opr :: map int rs @ literal v)
+    | instr (O.GOTO offset) = concatSp ["goto", int offset]
+    | instr (O.REGINT (opr, r1, r2, offset)) =
                concatSp [opr, int r1, int r2, int offset]
-    | instr (L.LOADFUNC _) = Impossible.impossible "LOADFUNC reached instr"
+    | instr (O.LOADFUNC _) = Impossible.impossible "LOADFUNC reached instr"
 
-  fun add (L.LOADFUNC (r, k, body), tail) =
+  fun add (O.LOADFUNC (r, k, body), tail) =
         list (concatSp [".load", int r, "function", int k]) body tail
     | add (i, tail) = instr i :: tail
   and list prefix body tail =
         concatSp [prefix, int (length body)] :: foldr add tail body
 
-  fun unparse code = list ".load module" code []
+  fun program code = list ".load module" code []
 
 end

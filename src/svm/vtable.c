@@ -47,7 +47,7 @@ Value VTable_get(T table, Value key) {
         uint32_t h = hashvalue(key);
 	i = h % table->size;
 	for (p = table->buckets[i]; p; p = p->link)
-		if (eqvalue(key, p->key))
+		if (identical(key, p->key))
 			break;
 	return p ? p->value : nilValue;
 }
@@ -62,7 +62,7 @@ void VTable_put(T table, Value key, Value value) {
         } else {
           i = hashvalue(key)%table->size;
           for (p = table->buckets[i]; p; p = p->link)
-            if (eqvalue(key, p->key))
+            if (identical(key, p->key))
               break;
           if (p == NULL) {
             p = vmalloc(sizeof(*p));
@@ -106,7 +106,7 @@ void VTable_remove(T table, Value key) {
 	table->timestamp++;
 	i = hashvalue(key)%table->size;
 	for (pp = &table->buckets[i]; *pp; pp = &(*pp)->link)
-		if (eqvalue(key, (*pp)->key)) {
+		if (identical(key, (*pp)->key)) {
 			struct binding *p = *pp;
 			// Value value = p->value;
 			*pp = p->link;

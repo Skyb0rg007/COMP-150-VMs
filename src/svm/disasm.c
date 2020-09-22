@@ -37,7 +37,7 @@ void printasm(FILE *fp, VMState vm, Instruction i) {
   if (info == NULL) {
     fprintf(fp, "opcode%d %d %d %d\n", code, uX(i), uY(i), uZ(i));
   } else {
-    const char *p = info->doco;
+    const char *p = info->unparsing_template;
     assert(p);
     while (*p) {
       size_t n = strcspn(p, "XYZL");
@@ -83,7 +83,7 @@ static OperandSet operands(Instruction i) {
   Opcode code = opcode(i);
   instruction_info *info = itable_entry_by_code(code);
   if (info != NULL) {
-    const char *p = info->doco;
+    const char *p = info->unparsing_template;
     if (strstr(p, "XYZ"))
       used |= has_iXYZ;
     else {
