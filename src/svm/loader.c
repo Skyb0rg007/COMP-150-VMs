@@ -87,7 +87,7 @@ static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input)
         }
         fun->instructions[i] = instr;
     }
-    fun->instructions[count] = Halt;
+    fun->instructions[count] = Halt; /* TODO: Encode this */
 
     fun->arity = arity;
     fun->size = count + 1;
