@@ -1,0 +1,47 @@
+Instruction table. You understand the infrastructure well enough to define an instruction table that includes at least 15 different instructions.
+
+- This has been done, as 15 opcodes are in the table in instructions.c
+
+Instruction semantics. You understand the semantics of instructions well enough that your vmrun recognizes at least 15 opcodes.
+
+- This has been done, since all 15 opcodes are implemented in vmrun.c
+
+Reuse of language. Supposing you were asked to implement a language not in the Scheme family, you can say how you would reuse virtual object code.
+
+- If using as a backend for Lua, the function literal form would be useful for
+  expressing function literals, since in Lua they are first-class
+
+Reuse of code. Supposing you were asked to implement a language not in the Scheme family, you can say whether and how you could reuse the loader and the instruction table.
+
+- I could not reuse the code for Lua, since the semantics of things such as tables or
+  arrays have different semantics than in svm. I would need to modify vmrun in vmrun.c
+
+Performance. You can explain your choices of performance tradeoffs in implementing function literal_slot.
+
+- I choose to use a dynamic array, which is not as performant as a static array
+  but allows for an arbitrary number of literals. Although expanding the
+  array is not constant time, amortized it is O(1).
+
+LL(1) parsing. You can identify how alternatives in a grammar correspond to a choice point in a recursive-descent parser.
+
+- In tokens_get_literal in iparsers.c, the opcode name determines the next form
+
+Invariants. You can name an invariant that virtual machine code must satisfy but virtual object code need not satisfy.
+
+- The machine code must ensure it only includes literal indices that exist,
+  but the object code handles that for you, ensuring that literal indices
+  are created whenever a literal is included.
+
+Embedding. You understand how the <literal> syntax from virtual object code is embedded into the VM Value type.
+
+- The literal syntax is embedded within tokens_get_literal in iparsers.c
+
+Projection. You understand which VM instructions can be projected directly into virtual object code.
+
+- The instructions that don't refer to literals can be projected without access to the vmstate,
+  since they don't need to add anything to the literal pool
+
+Formalism. Your code implements the operational semantics (loader edition).
+
+- I am unsure what this is asking for
+
