@@ -1,0 +1,27 @@
+
+sat :  'a producer * 'a producer -> 'a producer
+(p1 <|> p2) ts == case p1 ts
+                    of SOME x => SOME x
+                     | NONE => p2 ts
+
+sat : ('a -> bool) -> 'a producer -> 'a producer
+sat predicate p ts = case p ts
+                       of result as SOME (ERROR _, _) => result
+                        | SOME x => if predicate x then SOME x else NONE
+                        | NONE => NONE
+
+many  p == (curry op:: <$> p <*> many p) <|> succeed []
+
+many1 p == curry op:: <$> p <*> many p
+
+optional p == (SOME <$> p) <|> succeed NONE
+
+val count : int -> 'a producer -> 'a list producer (* exactly N *)
+count 0     p == succeed []
+count (n+1) p == curry op:: <$> p <*> count n p
+
+val <~> : 'a producer * 'b producer -> 'a producer
+p <~> q == (fn a => fn b => a) <$> p <*> q
+
+val >>  : 'a producer * 'b producer -> 'b producer
+p >>  q == (fn a => fn b => b) <$> p <*> q
