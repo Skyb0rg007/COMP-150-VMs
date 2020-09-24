@@ -3,14 +3,12 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-import Data.Void (Void)
-import Data.Text (Text)
-import Text.Megaparsec
-import Text.Megaparsec.Char
-import Data.Maybe (fromMaybe)
-import Data.Char (digitToInt)
-import qualified Text.Megaparsec.Char.Lexer as L
-import Debug.Trace
+import           Data.Char            (digitToInt)
+import           Data.Maybe           (fromMaybe)
+import           Data.Text            (Text)
+import           Data.Void            (Void)
+import           Text.Megaparsec      (Parsec, optional, parseTest, some, (<|>))
+import           Text.Megaparsec.Char (digitChar, string)
 
 type Parser = Parsec Void Text
 
