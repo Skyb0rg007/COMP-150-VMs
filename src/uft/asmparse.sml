@@ -81,6 +81,7 @@ struct
   val instr : A.instr P.producer 
      =  kw "@" >> regs <$> name <*> many int  (* "escape hatch" syntax *)
     <|> eR3 "+" <$> reg <~> the ":=" <*> reg <~> the "+" <*> reg
+    <|> eR3 "-" <$> reg <~> the ":=" <*> reg <~> the "-" <*> reg
 
   val parse : L.token list -> A.instr Error.error = P.produce instr
 
@@ -91,15 +92,54 @@ struct
   val int = Int.toString
   fun reg r = "r" ^ int r
   val spaceSep = String.concatWith " "
+  val nlSep = String.concatWith "\n"
+
+  (* fun unparse1 (A.OBJECT_CODE (O.REGS ("+", [x, y, z]))) = *)
+        (* spaceSep [reg x, ":=", reg y, "+", reg z] *)
+    (* | unparse1 _ = "an unknown assembly-code instruction" *)
+
+  val unparse_object_code =
+    fn O.REGS ("add", [x, y, z]) => spaceSep [reg x, ":=", reg y, "+", reg z]
+     | O.REGS ("+", [x, y, z]) => spaceSep [reg x, ":=", reg y, "+", reg z]
+     | O.REGS ("sub", [x, y, z]) => spaceSep [reg x, ":=", reg y, "-", reg z]
+     | O.REGS ("-", [x, y, z]) => spaceSep [reg x, ":=", reg y, "-", reg z]
+     | O.REGS ("mul", [x, y, z]) => spaceSep [reg x, ":=", reg y, "*", reg z]
+     | O.REGS ("*", [x, y, z]) => spaceSep [reg x, ":=", reg y, "*", reg z]
+     | O.REGS ("div", [x, y, z]) => spaceSep [reg x, ":=", reg y, "/", reg z]
+     | O.REGS ("/", [x, y, z]) => spaceSep [reg x, ":=", reg y, "/", reg z]
+     | O.REGS ("abs", [x, y])    => spaceSep [reg x, ":=", "abs", reg y]
+     | O.REGS ("hash", [x, y])   => spaceSep [reg x, ":=", "hash", reg y]
+     | O.REGS ("print", [x])     => spaceSep ["print", reg x]
+     | O.REGS ("halt", [])       => "halt"
+     (* | O.REGS ("goto", [x]) => "asdf" *)
+     | O.REGSLIT ("loadliteral", [x], lit) => spaceSep [reg x, ":=", spaceSep (ObjectUnparser.literal lit)]
+     | O.REGSLIT ("getglobal", [x], lit) => spaceSep [reg x, ":=", "G[" ^ spaceSep (ObjectUnparser.literal lit) ^ "]"]
+     | O.REGSLIT ("setglobal", [x], lit) => spaceSep ["G[" ^ spaceSep (ObjectUnparser.literal lit) ^ "]", reg x]
+     | O.GOTO n => spaceSep ["goto", int n]
+     | O.LOADFUNC (reg, arity, instrs) =>
+         nlSep [
+           
+         ]
+     | p =>
+         raise Fail ("unparse_object_code doesn't handle this case" ^ spaceSep (ObjectUnparser.program [p]))
 
 
-  fun unparse1 (A.OBJECT_CODE (O.REGS ("+", [x, y, z]))) =
-        spaceSep [reg x, ":=", reg y, "+", reg z]
-    | unparse1 _ = "an unknown assembly-code instruction"
+  val unparse1 : AssemblyCode.instr -> string =
+    fn A.OBJECT_CODE x => unparse_object_code x
+     | A.DEFLABEL lbl => lbl ^ ":"
+     | A.GOTO_LABEL lbl => spaceSep ["goto", lbl]
+     | A.IF_GOTO_LABEL (r, lbl) => spaceSep ["if", reg r, "goto", lbl]
+     | A.LOADFUNC _ => raise Fail "unparse1 should not be given LoadFunc"
 
+  val unparse_loadfunc : AssemblyCode.instr -> string list =
+    fn A.LOADFUNC (r, arity, instrs) =>
+        reg r ^ " := function " ^ int arity ^ "{"
+        :: map unparse1 instrs
+        @ ["}"]
+     | x => [ unparse1 x ]
   
   val unparse : AssemblyCode.instr list -> string list
-    = map unparse1  (* not good enough in presence of LOADFUNC *)
+    = List.concat o map unparse_loadfunc
 
 
 
