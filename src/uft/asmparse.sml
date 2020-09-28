@@ -116,10 +116,6 @@ struct
      | O.REGSLIT ("getglobal", [x], lit) => spaceSep [reg x, ":=", "G[" ^ spaceSep (ObjectUnparser.literal lit) ^ "]"]
      | O.REGSLIT ("setglobal", [x], lit) => spaceSep ["G[" ^ spaceSep (ObjectUnparser.literal lit) ^ "]", reg x]
      | O.GOTO n => spaceSep ["goto", int n]
-     | O.LOADFUNC (reg, arity, instrs) =>
-         nlSep [
-           
-         ]
      | p =>
          raise Fail ("unparse_object_code doesn't handle this case" ^ spaceSep (ObjectUnparser.program [p]))
 
@@ -135,6 +131,10 @@ struct
     fn A.LOADFUNC (r, arity, instrs) =>
         reg r ^ " := function " ^ int arity ^ "{"
         :: map unparse1 instrs
+        @ ["}"]
+     | A.OBJECT_CODE (O.LOADFUNC (r, arity, instrs)) =>
+        reg r ^ " := function " ^ int arity ^ "{"
+        :: ObjectUnparser.program instrs
         @ ["}"]
      | x => [ unparse1 x ]
   
