@@ -98,7 +98,7 @@ struct
         (* spaceSep [reg x, ":=", reg y, "+", reg z] *)
     (* | unparse1 _ = "an unknown assembly-code instruction" *)
 
-  val unparse_object_code =
+  val rec unparse_object_code : ObjectCode.instr -> string =
     fn O.REGS ("add", [x, y, z]) => spaceSep [reg x, ":=", reg y, "+", reg z]
      | O.REGS ("+", [x, y, z]) => spaceSep [reg x, ":=", reg y, "+", reg z]
      | O.REGS ("sub", [x, y, z]) => spaceSep [reg x, ":=", reg y, "-", reg z]
@@ -116,18 +116,20 @@ struct
      | O.REGSLIT ("getglobal", [x], lit) => spaceSep [reg x, ":=", "G[" ^ spaceSep (ObjectUnparser.literal lit) ^ "]"]
      | O.REGSLIT ("setglobal", [x], lit) => spaceSep ["G[" ^ spaceSep (ObjectUnparser.literal lit) ^ "]", reg x]
      | O.GOTO n => spaceSep ["goto", int n]
+     (* XXX *)
+     | O.LOADFUNC x => nlSep (unparse [A.OBJECT_CODE (O.LOADFUNC x)])
      | p =>
          raise Fail ("unparse_object_code doesn't handle this case" ^ spaceSep (ObjectUnparser.program [p]))
 
 
-  val unparse1 : AssemblyCode.instr -> string =
+  and unparse1 : AssemblyCode.instr -> string =
     fn A.OBJECT_CODE x => unparse_object_code x
      | A.DEFLABEL lbl => lbl ^ ":"
      | A.GOTO_LABEL lbl => spaceSep ["goto", lbl]
      | A.IF_GOTO_LABEL (r, lbl) => spaceSep ["if", reg r, "goto", lbl]
      | A.LOADFUNC _ => raise Fail "unparse1 should not be given LoadFunc"
 
-  val unparse_loadfunc : AssemblyCode.instr -> string list =
+  and unparse_loadfunc : AssemblyCode.instr -> string list =
     fn A.LOADFUNC (r, arity, instrs) =>
         reg r ^ " := function " ^ int arity ^ "{"
         :: map unparse1 instrs
@@ -138,8 +140,8 @@ struct
         @ ["}"]
      | x => [ unparse1 x ]
   
-  val unparse : AssemblyCode.instr list -> string list
-    = List.concat o map unparse_loadfunc
+  and unparse : AssemblyCode.instr list -> string list
+    = fn x => List.concat (map unparse_loadfunc x)
 
 
 
