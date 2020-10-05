@@ -1,38 +1,17 @@
-TOP := ../..
 
-BUILD=$(TOP)/build
-BIN=$(TOP)/bin
+SWIPL := swipl
 
-BASES=pp all main wpp impossible
-MLBS=$(BASES:%=%.mlb)
-CMS=$(BASES:%=%.cm)
-SRCS=$(shell echo *.sml)
+ifeq (run, $(firstword $(MAKECMDGOALS)))
+	RUN_ARGS := $(wordlist 2, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
+	$(eval $(RUN_ARGS):;@:)
+endif
 
-MAINS=uft.opt uft
+run:
+	@$(SWIPL) ./uft/main.pl $(RUN_ARGS)
 
-.PHONY: mosml
+uft-prog:
+	$(SWIPL) --stand_alone=true -o $@ -g true -c uft/main.pl
 
-mosml: $(BIN)/uft
+uft:
+	$(SWIPL) --stand_alone=true -o ../../bin/uft -g true -c uft/main.pl
 
-.PHONY: clean
-
-clean:
-	rm -f *.ui *.uo
-	rm -f $(BIN)/uft $(BIN)/uft.opt
-
-.PHONY: all
-
-all: $(MAINS:%=$(BIN)/%)
-
-.PHONY: mlton
-
-mlton: $(BIN)/uft.opt
-
-$(BIN)/uft.opt: $(MLBS) $(SRCS)
-	mlton -output $@ -verbose 1 main.mlb
-
-%.mlb: %.cm
-	cm2mlb $^ > $@ || rm -f $@
-
-$(BIN)/uft: $(SRCS) $(CMS)
-	$(TOP)/bin/mosml-compile-cm -o $@ main.cm
