@@ -2,10 +2,18 @@
 
 %1 := "foobar"
 %2 := "baz"
-goto foo
-%3 := function 2 { bar: print %1; goto bar; print %2 }
-%4 := %1 + %2
+print %2
+
+%3 := function 2 { bar: print %1; goto bar }
+
+%10 := 3
+%20 := 4
+%4 := %10 + %20
+print %4
+
 %5 := true
+print %5
+
 %5 := 3.14159
-foo:
+print %5
 
