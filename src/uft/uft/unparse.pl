@@ -73,35 +73,3 @@ test(unparse2) :-
     unparse([deflabel(foo)], "foo:\n").
 
 :- end_tests(uft_ast).
-
-% %! is_vo(@Vo) is semidet
-% is_vo(Vo) :- ground(Vo), maplist(is_vo_instr, Vo), !.
-
-% is_vo_instr(goto(N)) :- integer(N).
-% is_vo_instr(add(R1, R2, R3)) :- maplist(number, [R1, R2, R3]).
-% is_vo_instr(sub(R1, R2, R3)) :- maplist(number, [R1, R2, R3]).
-% is_vo_instr(mod(R1, R2, R3)) :- maplist(number, [R1, R2, R3]).
-% is_vo_instr(abs(R1, R2)) :- maplist(number, [R1, R2]).
-% is_vo_instr(hash(R1, R2)) :- maplist(number, [R1, R2]).
-% is_vo_instr(print(R1)) :- number(R1).
-% is_vo_instr(loadfunc(R, Arity, Instrs)) :- number(R), number(Arity), is_vo(Instrs).
-% is_vo_instr(halt).
-% is_vo_instr(loadlit(R, Lit)) :- number(R), is_literal(Lit).
-% is_vo_instr(getglobal(R, Lit)) :- number(R), is_literal(Lit).
-% is_vo_instr(setglobal(Lit, R)) :- is_literal(Lit), number(R).
-
-% %! is_asm(@Asm) is semidet
-% is_asm(Asm) :- ground(Asm), maplist(is_asm_instr, Asm), !.
-
-% is_asm_instr(loadfunc(R, Arity, Instrs)) :- number(R), number(Arity), is_asm(Instrs).
-% is_asm_instr(deflabel(Label)) :- string(Label).
-% is_asm_instr(goto(Label)) :- string(Label).
-% is_asm_instr(if_goto(R, Label)) :- number(R), string(Label).
-% is_asm_instr(Instr) :- is_vo_instr(Instr).
-
-% is_literal(num(N)) :- number(N).
-% is_literal(string(S)) :- string(S).
-% is_literal(true).
-% is_literal(false).
-% is_literal(emptylist).
-% is_literal(nil).

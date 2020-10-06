@@ -1,0 +1,115 @@
+
+1. To claim this point, do two things:
+
+    In assembly.sml, point to a line of code you have written that passes a message to Error.ERROR. Explain in source-language terms what error the code reports.
+
+
+    Give an example of an analogous error that could occur in a C program or an ML program, that a compiler would be able to detect. A description in informal English is enough; the example need not show source code. And the analogy need not involve labels per se.
+
+
+2. To claim this point, tell us where in your allsyntax.vs the examples can be found. “Right at the beginning” would be a good and sufficient answer (if accurate).
+
+3. A claim for this point will have to be supported by an instruction from your allsyntax.vs. The computer can find the middle line for you; if you run sh or bash, you can run this command:
+
+    sed -n "$(expr $(cat allsyntax.vs | wc -l) / 2)p" allsyntax.vs
+    If that line contains an instruction, use it; if it contains function-loading syntax, use the nearest preceding instruction.
+
+    To claim this point, show us the instruction, and identify the lines of code in your one_line_instr function in your asmparse.sml that are intended to parse the instruction.
+
+4. To claim this point, give us the line numbers of the start and end of the first (and possibly only) function loaded in your loadfun.vs file. And explain how your parser in asmparse.sml is intended to handle those lines.
+    
+    2-5
+
+5. To claim this point,
+
+    Identify a part of your assembly-language parser that did not work initially.
+    
+    Identify the line in your test file (allsyntax.vs, loadfun.vs, or other) that contains an input that exposed the fault.
+    
+    Say what you tried to diagnose or correct the fault and whether your efforts were successful.
+    
+    If everything you wrote worked on the first try, you cannot claim this point.
+
+6. This point can be claimed only if you submitted the working round-trip.vs that you wrote in step 23 above. To claim the point, identify the entry in the instruction table that contains the relevant unparsing template.
+
+
+7. To claim this point, tell us where in your allsyntax.vs the examples can be found. “At the end” would be a good and sufficient answer (if accurate).
+
+    
+
+The candidates for embedding and projection in asmparse.sml are the “unparser,” which is understood to mean function AsmParse.unparse, and the “parser,” which is understood to mean a suitable Kleisli composition of AsmParse.parse with map AsmLex.tokenize and Error.list (as in uft.sml). To claim this point,
+
+Say whether the parser and unparser constitute an embedding/projection pair.
+
+If they are such a pair, which is the embedding and which is the projection?
+
+Say how you know the answers to the previous two questions.
+
+The parsing monad and error monad actually share more operations than are shown in their interfaces as I provided them. To claim this point, transfer an operation from one monad to the other in one of the following three ways:3
+
+To claim the point on easy mode, give the type of the choice combinator <|> in the error monad, and give algebraic laws that define its behavior.
+
+To claim the point on normal mode, give the type of the list function in the parsing monad, and give algebraic laws that define its behavior.
+
+To claim the point on hard mode, give the type of the monadic bind operation >>= in the parsing monad, and define its behavior by giving either algebraic laws or ML code.
+
+All three modes are worth the same: one point. Claiming multiple modes does not earn multiple points. Providing three modes give you a chance to discover where you are.
+
+To claim this point, define a parsing combinator commaSeparated that captures the common syntactic abstraction of “zero or more things separated by commas.” Give the type of commaSeparated, and define its behavior by giving either algebraic laws or ML code.
+
+
+1. Understanding label elimination. You understand error detection in the label-elimination pass.
+
+    In uft/parse/parser, I throw the 'invalid token' error.
+    This occurs when a user types a valid token, but it does not form a valid line of syntax.
+
+    For example, in C, writing:
+        int int;
+    Since this does not create a valid line of syntax.
+
+2. Writing test codes. Your allsyntax.vs includes at least one example of each of these instructions from previous modules: check, expect, conditional, goto, get and set global variable, register move (copy), error, load-literal, and halt instructions.
+    My allsyntax.vs file does not contain all these functions
+
+3. Parsing single-line instructions. You can explain your one_line_instr parser.
+
+    %1 := car %2
+    uft/parse/parser.pl:56
+
+4. Parsing function loads. You can explain how your parser is intended to handle function loading.
+
+    in t/allsyntax.vs, the last instruction is a function load
+
+5. Debugging combinator parsers. You can explain how you debugged your parser.
+
+    Parsing the type-checking functions did not originally work.
+    This was because the character '?' was not valid inside identifiers.
+    I had to modify uft/parse/lexer.pl to add '?' as a valid character in identifiers.
+
+6. Unparsing in the instruction table. You understand how to use the unparsing template in the SVM’s instruction table.
+
+    I did not write this file
+
+7. Extending the instruction set. Your allsyntax.vs includes an example of each vScheme primitive listed in step 17.
+
+    The beginning of t/allsyntax.vs
+
+8. Embedding and projection. You understand embedding and projection as it relates to asmparse.sml.
+
+    iso :- uft_parse:parse(Str, Ast), uft_unparse:unparse(Str, Ast).
+
+9. Monads. You understand how to transfer operations between monads.
+
+    type 'a t = (* monad *)
+    >>= : 'a t * ('a -> 'b t) -> 'b t
+
+    Ok x >>= f === f x
+    Err e >>= _ === Err e
+
+10. Combinator parsing. You understand the producer interface well enough to define new parsing combinators.
+
+    commaSeparated : 'a t -> 'a list t
+    commaSeparated p =
+        curry op:: <$> p <*> many (the "," >> p)
+        <|>
+        succeed []
+
