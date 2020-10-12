@@ -1,0 +1,9 @@
+resolver: lts-16.17
+
+packages:
+- .
+
+extra-deps:
+- souffle-haskell-2.0.1@sha256:854105f801fcdf269b733206a0251772e6d4cd4bbfb00c4192cff12dd8ff2d7e,10567
+
+allow-newer: true

@@ -62,7 +62,7 @@ keyword("function?", function_chk).
 keyword("goto", goto).
 keyword("halt", halt).
 keyword("hash", hash).
-keyword("idiv", idiv).
+% keyword("idiv", idiv).
 keyword("if", if).
 keyword("nil", nil).
 keyword("nil?", nil_chk).

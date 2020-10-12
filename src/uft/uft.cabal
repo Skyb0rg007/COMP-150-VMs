@@ -1,0 +1,152 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 20ed7731d08de46693bd1f039799598aa3064a089f3feb00a36b7e226744cf45
+
+name:           uft
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/Skyb0rg007/uft#readme>
+homepage:       https://github.com/Skyb0rg007/uft#readme
+bug-reports:    https://github.com/Skyb0rg007/uft/issues
+author:         Skye Soss
+maintainer:     skyler.soss@gmail.com
+copyright:      2019 Skye Soss
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/Skyb0rg007/uft
+
+library
+  exposed-modules:
+      SExpr
+      SExpr.Ast
+      SExpr.Parse
+      SExpr.Parse.Lexer
+      SExpr.Parse.Monad
+      SExpr.Parse.Tokens
+      Uft.Asm.Ast
+      Uft.Asm.LabelElim
+      Uft.Asm.Parse.Lexer
+      Uft.Asm.Parse.Monad
+      Uft.Asm.Parse.Parser
+      Uft.Asm.Parse.Tokens
+      Uft.Asm.ToVO
+      Uft.Lambda.Ast
+      Uft.Lambda.ClosureConvert
+  other-modules:
+      Paths_uft
+  hs-source-dirs:
+      src
+  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      aeson
+    , array
+    , base >=4.7 && <5
+    , binary
+    , bytestring
+    , containers
+    , deepseq
+    , dlist
+    , lens
+    , megaparsec
+    , mmorph
+    , monad-control
+    , mtl
+    , ordered-containers
+    , prettyprinter
+    , prettyprinter-ansi-terminal
+    , recursion-schemes
+    , souffle-haskell
+    , srcloc
+    , string-conversions
+    , text
+    , transformers
+    , transformers-base
+    , unordered-containers
+    , vector
+  default-language: Haskell2010
+
+executable uft-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_uft
+  hs-source-dirs:
+      app
+  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , array
+    , base >=4.7 && <5
+    , binary
+    , bytestring
+    , containers
+    , deepseq
+    , dlist
+    , lens
+    , megaparsec
+    , mmorph
+    , monad-control
+    , mtl
+    , ordered-containers
+    , prettyprinter
+    , prettyprinter-ansi-terminal
+    , recursion-schemes
+    , souffle-haskell
+    , srcloc
+    , string-conversions
+    , text
+    , transformers
+    , transformers-base
+    , uft
+    , unordered-containers
+    , vector
+  default-language: Haskell2010
+
+test-suite uft-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_uft
+  hs-source-dirs:
+      test
+  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , array
+    , base >=4.7 && <5
+    , binary
+    , bytestring
+    , containers
+    , deepseq
+    , dlist
+    , lens
+    , megaparsec
+    , mmorph
+    , monad-control
+    , mtl
+    , ordered-containers
+    , prettyprinter
+    , prettyprinter-ansi-terminal
+    , recursion-schemes
+    , souffle-haskell
+    , srcloc
+    , string-conversions
+    , text
+    , transformers
+    , transformers-base
+    , uft
+    , unordered-containers
+    , vector
+  default-language: Haskell2010
