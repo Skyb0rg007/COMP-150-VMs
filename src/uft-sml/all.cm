@@ -4,6 +4,7 @@ group is
   (***** basic infrastructure *****)
 
   impossible.cm   (* analog of assertion failure *)
+  escapes.sml     (* character escapes for string literals *)
 
   env.sml         (* environment abstraction *)
 
@@ -36,6 +37,35 @@ group is
   asmparse.sml   (* assembly parser, built in modules 3 & 4, template provided *)
   assembler.sml  (* Assembler, built in module 4, not provided *)
 
+
+  (******* vScheme and its infrastructure ****)
+
+  primitives.sml   (* given to students; properties of primitives *)
+
+  vscheme.sml   (* vscheme and utilities; given to students *)
+
+  pp.cm              (* vscheme prettyprinter, with infrastructure; given to students *)
+  wpp.cm             (* [prettyprinter used to disambiguate check-expect] *)
+  wppscheme.sml
+
+  disambiguate.sml  (* vscheme disambiguation; completed by students *)
+
+  sxlex.sml          (* vscheme parser (and S-expressions); given to students *)
+  sx.sml
+  vscheme-parse.sml
+
+
+
+  (******* K-NORMAL FORM ********)
+
+
+  knormal.sml       (* completed by students *)
+
+  embedkn.sml       (* embedding and projection; completed by students *)
+  projectkn.sml
+
+
+  (*********** UNIVERSAL FORWARD TRANSLATOR **********)
 
   ioutil.sml
   uft.sml

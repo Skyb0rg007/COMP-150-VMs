@@ -36,3 +36,7 @@ int literal_slot(VMState state, Value literal) {
 Value literal_value(VMState vm, unsigned index) {
     return vm->literals[index];
 }
+
+int literal_count(VMState vm) {
+    return vm->nlits;
+}

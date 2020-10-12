@@ -16,10 +16,10 @@ struct
 
   (**** I/O functions and types ****)
 
-  val lines  = IOUtil.lines
-  val output = IOUtil.output
-  val outln  = IOUtil.outln
   type instream = TextIO.instream
+  val lines  = IOUtil.lines : instream -> string list
+  val output = IOUtil.output 
+  val outln  = IOUtil.outln
 
 
   (**** function composition, including errors ****)
@@ -29,48 +29,85 @@ struct
   infix 0 >>> >=>
   fun f >>> g = fn x => g (f x)         (* function composition, Elm style *)
   val op >=> = Error.>=>
-  val ! = Error.map
-  fun emap f = map f >>> Error.list
 
-  (**** functions for reading code to be translated ****)
+  fun liftMap f xs = Error.list (map f xs)  (* liftMap f == map f >>> Error.list *)
+
+
+
+  (**** Reader functions ****)
+
+  val schemeOfFile : instream -> VScheme.def list error =
+    lines                             (* line list *)
+    >>>  SxParse.parse                (* sx list error *)
+    >=>  liftMap VSchemeParsers.defs  (* def list list error *)
+    >>>  Error.map List.concat        (* def list error *)
+    
+  val schemexOfFile : instream -> UnambiguousVScheme.def list error =
+    schemeOfFile >>>
+    Error.map (map Disambiguate.disambiguate)
 
   val VS_of_file : instream -> AssemblyCode.instr list error =
-    lines
-    >>> map (AsmLex.tokenize  (* token list error *)
-            >=>  AsmParse.parse       (* instr error *)
-           )
-    >>> Error.list
+    lines                    (* line list *)
+    >>> map AsmLex.tokenize  (* token list error list *)
+    >>> Error.list           (* token list list error *)
+    >=> AsmParse.parse       (* instr list error *)    
 
 
-  (**** functions for emitting translated code ****)
 
-  fun emitVO outfile = app (outln outfile) o ObjectUnparser.program
-  fun emitVS outfile = app (outln outfile) o AsmParse.unparse
 
-  (**** individual translations ***)
-
-  exception Backward  
+  (**** Materializer functions ****)
+  
+  exception Backward  (* for internal use only *)
+                      (* raised if someone commands a backward translation *)
 
   datatype language = datatype Languages.language (* imports value constructors *)
-  exception NoTranslationTo of language  
+  exception NoTranslationTo of language  (* used externally *)
+
+  val ! = Error.map  (* useful abbreviation for materializers and `translate` *)
+
+
+  fun HO_of HO   = schemexOfFile
+    | HO_of HOX  = Impossible.unimp "imperative features (HOX to HO)"
+    | HO_of _    = raise Backward
 
   fun VS_of VS   = VS_of_file
-    | VS_of from = raise NoTranslationTo VS
-  fun VO_of VO   = (fn _ => Error.ERROR "there is no reader for .vo")
-    | VO_of from = VS_of from >=> Assembler.translate
+    | VS_of inLang = raise NoTranslationTo VS
+  fun VO_of VO     = (fn _ => Error.ERROR "There is no reader for .vo")
+    | VO_of inLang = VS_of inLang >=> Assembler.translate
 
 
 
-  (**** the Universal Forward Translator ****)
 
-  exception NotForward of language * language
 
-  fun translate (from, to) (infile, outfile) =
-    (case to
-       of VO => VO_of      from >>> ! (emitVO outfile)
-        | VS => VS_of      from >>> ! (emitVS outfile)
-        | _  => raise NoTranslationTo to
+
+  (**** Emitter functions ****)
+
+  val width =  (* parameter to prettyprinter *)
+    case Option.mapPartial Int.fromString (OS.Process.getEnv "WIDTH")
+      of SOME n => n
+       | NONE => 72
+
+  fun emitVO outfile = app (outln outfile) o ObjectUnparser.module
+  fun emitVS outfile = app (outln outfile) o AsmParse.unparse
+
+  fun emitScheme outfile = Wpp.toOutStream width outfile o WppScheme.pp
+
+  fun emitHO outfile = app (emitScheme outfile o Disambiguate.ambiguate)
+
+
+
+
+  (**** The Universal Forward Translator ****)
+
+  exception NotForward of language * language  (* for external consumption *)
+
+  fun translate (inLang, outLang) (infile, outfile) =
+    (case outLang
+       of VO => VO_of      inLang >>> ! (emitVO outfile)
+        | VS => VS_of      inLang >>> ! (emitVS outfile)
+        | HO => HO_of      inLang >>> ! (emitHO outfile)
+        | _  => raise NoTranslationTo outLang
     ) infile
-    handle Backward => raise NotForward (from, to)
-         | NoTranslationTo to => raise NotForward (from, to)
+    handle Backward => raise NotForward (inLang, outLang)
+         | NoTranslationTo outLang => raise NotForward (inLang, outLang)
 end

@@ -8,8 +8,9 @@ structure Env :> sig
   exception NotFound of name
   type 'a env
   val empty : 'a env
-  val find : name * 'a env -> 'a
+  val find : name * 'a env -> 'a  (* may raise NotFound *)
   val bind : name * 'a * 'a env -> 'a env
+  val binds : 'a env * name -> bool
 
   val toString : ('a -> string) -> 'a env -> string
 end
@@ -29,6 +30,9 @@ struct
   fun find (name, []) = not_found name
     | find (name, (n, v)::tail) = if name = n then v else find (name, tail)
   fun bind (name, v, rho) = (name, v) :: rho
+
+  fun binds ([], x) = false
+    | binds ((x', _)::env, x) = x = x' orelse binds (env, x)
 
   val find = fn (x, rho) => find (x, rho)
     handle e =>

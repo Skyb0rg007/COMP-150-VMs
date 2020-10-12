@@ -20,9 +20,11 @@ struct
   structure E = Error
   type 'a error = 'a E.error
   
-  type 'a producer = input list -> ('a error * input list) option
+  type 'a producer_fun = input list -> ('a error * input list) option
+  type 'a producer = 'a producer_fun
   fun asFunction p = p
   fun ofFunction f = f
+  fun transformWith t = t
 
   fun produce p inputs =
     case p inputs
@@ -103,7 +105,7 @@ struct
 
   type 'a pref = 'a producer ref
   fun pbang cell ts = ! cell ts  (* delays until tokens arrive *)
-  val ! = pbang
+  val !! = pbang
 
   fun fix' mk_p =
     let fun diverge tokens = diverge tokens
@@ -131,6 +133,5 @@ struct
       end
     in expected
     end
-
 
 end

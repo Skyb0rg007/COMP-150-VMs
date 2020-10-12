@@ -60,7 +60,7 @@ void printasm(FILE *fp, VMState vm, Instruction i) {
         case 'Z': fprintf(fp, "%u", uZ(i)); break;
         case 'L':
           if (p[n+1] == 'I' && p[n+2] == 'T') {
-            fprint(fp, "%v", literal_value(vm, uYZ(i)));
+            fprint(fp, "%V", literal_value(vm, uYZ(i)));
             p += 2; // we get n + 1 below
           } else {
             fputc('L', fp);
@@ -71,9 +71,9 @@ void printasm(FILE *fp, VMState vm, Instruction i) {
         p += n + 1;
       }
     }
-    if (code == LoadLiteral) {
-      fprint(fp, "  ; %v", literal_value(vm, uYZ(i)));
-    }
+//    if (code == LoadLiteral) {
+//      fprint(fp, "  ; %V", literal_value(vm, uYZ(i)));
+//    }
   }
 }
 
@@ -113,9 +113,9 @@ void idump(FILE *fp, VMState vm, int pc, Instruction I,
            Value *RX, Value *RY, Value *RZ) {
     OperandSet used = operands(I);
     fprintf(fp, "%60s", "");
-    if (used & has_uX) { assert(RX); fprint(fp, "  r%d = %v", uX(I), *RX); }
-    if (used & has_uY) { assert(RY); fprint(fp, "  r%d = %v", uY(I), *RY); }
-    if (used & has_uZ) { assert(RZ); fprint(fp, "  r%d = %v", uZ(I), *RZ); }
+    if (used & has_uX) { assert(RX); fprint(fp, "  r%d = %V", uX(I), *RX); }
+    if (used & has_uY) { assert(RY); fprint(fp, "  r%d = %V", uY(I), *RY); }
+    if (used & has_uZ) { assert(RZ); fprint(fp, "  r%d = %V", uZ(I), *RZ); }
     system("tput cr setaf 1");
 //@ module >= 7
     fprintf(fp, "[%3d @ $r%-3ld] ", pc, regbase);

@@ -1,11 +1,32 @@
 #!/usr/bin/env lua5.1
 
-require 'ioutil'
+local function argv_files(arg)
+  if #arg == 0 then
+    local file = io.stdin
+    return function()
+             local answer = file
+             file = nil
+             return answer, nil
+           end
+  else
+    return coroutine.wrap(function ()
+                            for _, path in ipairs(arg) do
+                              local f, msg = io.open(path)
+                              if f then
+                                coroutine.yield(f, path)
+                                f:close()
+                              else
+                                error(path .. ': ' .. msg)
+                              end
+                            end
+                          end)
+  end
+end
 
 local ingroup = false
 
 io.write('$(SML_LIB)/basis/basis.mlb\n')
-for f in io.arg_files(arg) do
+for f in argv_files(arg) do
   for l in f:lines() do
     if l:find '^is%s*$' then
       ingroup = false

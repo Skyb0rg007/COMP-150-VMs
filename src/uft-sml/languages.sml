@@ -19,10 +19,10 @@ struct
   fun inject (l, s, d) = { language = l, short = s, description = d }
 
   val table = map inject
-    [ (HOX, "ho!", "Higher-order vScheme with mutation")
-    , (HO,  "ho",  "Pure, higher-order vScheme")
-    , (FO,  "fo",  "Pure, first-order vScheme")
-    , (CL,  "cl",  "Pure, first-order vScheme with closure and capture forms")
+    [ (HOX, "ho!", "Higher-order vScheme with mutable variables in closures")
+    , (HO,  "ho",  "Higher-order vScheme")
+    , (FO,  "fo",  "First-order vScheme")
+    , (CL,  "cl",  "First-order vScheme with closure and capture forms")
     , (KN,  "kn",  "K-Normal form")
     , (VS,  "vs",  "VM assembly language")
     , (VO,  "vo",  "VM object code")

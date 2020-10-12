@@ -109,6 +109,7 @@ void installprinters(void) {
     installprinter('n', printname);
     installprinter('s', printstring);
     installprinter('v', bprintvalue);
+    installprinter('V', bprintquotedvalue);
     installprinter('%', printpercent);
 }
 
@@ -166,6 +167,22 @@ void bprintvalue(Printbuf output, va_list_box *box) {
     case Emptylist:  bufputs(output, "'()"); break;
     default: fprintf(stderr, "ERROR<tag=%d>\n", v.tag); break;
     /* default: fprintf(stderr, "ERROR in print.c <tag=%d>\n", v.tag); break; */
+    }
+}
+
+void bprintquotedvalue(Printbuf output, va_list_box *box) {
+    assert(output);
+    assert(box);
+    Value v = va_arg(box->ap, Value);
+    switch (v.tag) {
+    case String: 
+      bufput(output, '"');
+      bufwrite(output, v.s->bytes, v.s->length);
+      bufput(output, '"');
+      break;
+    default:
+      bprint(output, "%v", v);
+      break;
     }
 }
 

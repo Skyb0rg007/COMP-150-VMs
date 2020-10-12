@@ -68,6 +68,9 @@ StringBuffer Vmstring_buffer(size_t length);
 void Vmstring_putc(StringBuffer p, char c);
   // add a character to a buffer
 
+void Vmstring_puts(StringBuffer p, VMString s);
+  // add all characters of `s` to buffer
+
 VMString Vmstring_of_buffer(StringBuffer *bp);
   // interns the contents of the buffer and frees its memory
 

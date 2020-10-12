@@ -1,7 +1,7 @@
-(* This manages the command line and consults the Languages 
+(*  Implements the command line and consults the Languages 
     table (languages.sml) to see what translation is called for. *)
 
-(* You'll need to understand what's going on, and how it's used *)
+(* The code is mostly error handling, and you won't need to look at it. *)
 
 structure Main = struct
 

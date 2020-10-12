@@ -7,9 +7,10 @@ signature PRODUCER = sig
   type input
   type 'a error = 'a Error.error
   type 'a producer
+  type 'a producer_fun = input list -> ('a error * input list) option
 
-  val asFunction : 'a producer -> input list -> ('a error * input list) option
-  val ofFunction : (input list -> ('a error * input list) option) -> 'a producer
+  val asFunction : 'a producer     -> 'a producer_fun
+  val ofFunction : 'a producer_fun -> 'a producer
 
   val produce : 'a producer -> input list -> 'a error
     (* consumes the entire list to produce a single 'a, or errors *)
@@ -50,11 +51,11 @@ signature PRODUCER = sig
   val notFollowedBy : 'a producer -> unit producer
 
   (* recursive parsers *)
-  val fix : ('a producer -> 'a producer) -> 'a producer
+  val fix : ('a producer -> 'a producer) -> 'a producer   (* for usage see below *)
 
   (* recursive parsers, efficiently *)
-  type 'a pref 
-  val ! : 'a pref -> 'a producer
+  type 'a pref   (* reference to a parser *)
+  val !! : 'a pref -> 'a producer
   val fix' : ('a pref -> 'a producer) -> 'a producer
   
 
@@ -68,4 +69,45 @@ signature PRODUCER = sig
   val curry  : ('a * 'b      -> 'c) -> ('a -> 'b -> 'c)
   val curry3 : ('a * 'b * 'c -> 'd) -> ('a -> 'b -> 'c -> 'd)
 
+
+  (* useful for wrapping producers, e.g., for debugging *)
+  val transformWith :
+        ('a producer_fun -> 'a producer_fun) -> ('a producer -> 'a producer)
+
 end
+
+
+(******* Using the fixed-point combinators *****
+
+Suppose you want to define a recursive parser for an evaluator of
+sums, like this:
+
+    exp = int <|> succeed plus <~> the "(" <*> exp <~> the "+" <*> exp <~> the ")"
+
+where `fun plus x y = x + y`.
+
+You can't write this in ML.  But you can use a fixed-point combinator
+that is just like the Y combinator in the lambda calculus.  First,
+turn the recursion equation into a function that, when given `exp`,
+returns `exp`:
+
+    exp =  int <|> succeed plus <~> the "(" <*> exp <~> the "+" <*> exp <~> the ")"
+
+ fn exp => int <|> succeed plus <~> the "(" <*> exp <~> the "+" <*> exp <~> the ")"
+
+Then pass the whole thing to `fix`:
+  
+ fix (fn exp => int <|> succeed plus <~> the "(" <*> exp <~> the "+" <*> exp <~> the ")")
+
+The result is your parser.
+
+If you want to make it more efficient, `fix'` takes a similar
+function, but its argument is a reference to a parser, which has to be
+dereferenced:
+
+ fix' (fn expref =>
+           let val exp = !!expref
+           in int <|> succeed plus <~> the "(" <*> exp <~> the "+" <*> exp <~> the ")"
+           end)
+
+*)

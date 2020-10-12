@@ -216,8 +216,17 @@ StringBuffer Vmstring_buffer(size_t length) {
 
 void Vmstring_putc(StringBuffer b, char c) {
   VMString hs = (VMString) b;
-  assert(hs->hash < hs->length);
+  assert(hs && hs->hash < hs->length);
   hs->bytes[hs->hash++] = c;
+}
+
+void Vmstring_puts(StringBuffer b, VMString s) {
+  VMString hs = (VMString) b;
+  assert(hs && s);
+  size_t slen = s->length; 
+  assert(hs->hash + slen <= hs->length);
+  memcpy(hs->bytes + hs->hash, s->bytes, slen);
+  hs->hash += slen;
 }
 
 VMString Vmstring_of_buffer(StringBuffer *bp) {

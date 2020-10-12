@@ -19,7 +19,7 @@ signature ERROR = sig
   (* Kleisli composition *)
   val >=> : ('a -> 'b error) * ('b -> 'c error) -> ('a -> 'c error)
 
-  (* list funcitons *)
+  (* list functions *)
   val list : 'a error list -> 'a list error
   val mapList : ('a -> 'b error) -> ('a list -> 'b list error)
 end

@@ -27,12 +27,16 @@ structure ObjectCode = struct
                *)
 
       | REGINT     of operator * reg * reg * int
+
+
+    type module = instr list
+
 end
 
 
 structure ObjectUnparser :> sig
   (* emit on-disk form of virtual object code *)
-  val program : ObjectCode.instr list -> string list 
+  val module : ObjectCode.instr list -> string list 
      (* emits ".load module" with the right size *)
 
   val literal : ObjectCode.literal -> string list 
@@ -68,6 +72,6 @@ struct
   and list prefix body tail =
         concatSp [prefix, int (length body)] :: foldr add tail body
 
-  fun program code = list ".load module" code []
+  fun module code = list ".load module" code []
 
 end

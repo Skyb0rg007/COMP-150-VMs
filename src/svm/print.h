@@ -29,7 +29,7 @@ void installprinters(void);
   //   %v (Value)
 
 Printer printpercent, printstring, printdecimal, printchar, printname, printpointer;
-Printer printpar, bprintvalue;
+Printer printpar, bprintvalue, bprintquotedvalue;
 
 //// print to files
 

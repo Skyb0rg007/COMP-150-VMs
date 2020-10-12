@@ -17,6 +17,7 @@ structure AsmToken = struct
                  | NAME   of string
                  | STRING of string
                  | INT of int
+                 | EOL (* end of line *)
 end
 
 structure AsmLex :> sig
@@ -36,7 +37,6 @@ struct
 
   val dq = #"\""   (* double quote *)
 
-  fun quoteString s = str dq ^ String.toCString s ^ str dq
   fun ceeMinus #"~" = #"-"
     | ceeMinus c    = c
 
@@ -58,12 +58,13 @@ struct
     | unparse (EQUALEQUAL)  = "=="
     | unparse (REGISTER n)  = "$r" ^ Int.toString n
     | unparse (NAME s)      = s  (* dodgy? *)
-    | unparse (STRING s)    = quoteString s
+    | unparse (STRING s)    = StringEscapes.quote s
     | unparse (INT s)       = String.map ceeMinus (Int.toString s)
+    | unparse (EOL)         = "<eol>"
 
   structure L = MkListProducer (val species = "lexer"
                                 type input = char
-                                val show = quoteString o implode
+                                val show = StringEscapes.quote o implode
                                )
 
 
@@ -138,12 +139,32 @@ struct
 
   fun char c = sat (curry op = c) one
 
-  fun escape #"n" = Error.OK #"\n"
+  fun escape #"n" = Error.OK #"\n"  (* can undo SML Char.toCString *)
+    | escape #"t" = Error.OK #"\t"
+    | escape #"r" = Error.OK #"\r"
+    | escape #"f" = Error.OK #"\f"
+    | escape #"v" = Error.OK #"\v"
+    | escape #"a" = Error.OK #"\a"
+    | escape #"b" = Error.OK #"\b"
     | escape #"\"" = Error.OK #"\""
     | escape #"\\" = Error.OK #"\\"
+    | escape #"?" = Error.OK #"?"
+    | escape #"'" = Error.OK #"'"
     | escape c = Error.ERROR ("Escape code \\" ^ str c ^ " is undefined")
 
-  val escapedChar =  char #"\\" >> L.check (escape <$> one)
+  fun count 0 p = succeed []
+    | count n p = curry op :: <$> p <*> count (n - 1) p
+
+  val digit = sat Char.isDigit one
+
+  fun octal digits =
+    case Int.scan StringCvt.OCT (fn (c :: cs) => SOME (c, cs) | [] => NONE) digits
+     of SOME (i, []) => SOME (chr i)
+      | _ => NONE
+
+  val escapedChar =  char #"\\" >> (  L.maybe octal (count 3 digit)
+                                  <|> L.check (escape <$> one)
+                                   )
                  <|> sat (curry op <> dq) one
          
   val escapedChar' = L.ofFunction
@@ -176,7 +197,9 @@ struct
     <|> char dq >> L.perror "unterminated quoted string"
     <|> (name o implode) <$> many1 (sat (not o isDelim) one)
 
-  val tokenize = L.produce (whitespace >> many (token <~> whitespace)) o explode
+  fun manyEOL p = L.fix' (fn manyp => curry op :: <$> p <*> L.!! manyp <|> succeed [EOL])
+
+  val tokenize = L.produce (whitespace >> manyEOL (token <~> whitespace)) o explode
     : string -> token list Error.error
 
 

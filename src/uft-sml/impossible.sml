@@ -12,4 +12,5 @@ structure Impossible = struct
           raise (Impossible msg)
       end
   fun unimp msg = impossible (msg ^ " not implemented")
+  fun exercise msg = impossible (msg ^ " is supposed to be an exercise")
 end

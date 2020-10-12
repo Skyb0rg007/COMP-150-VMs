@@ -57,4 +57,8 @@ static inline void vmstate_set_reg(VMState vm, uint8_t index, Value x)
     vm->registers[index] = x;
 }
 
+int literal_count(VMState state);
+  // Returns N, the number of index values for which it
+  // is ok to call `literal_value` (range 0 to N-1)
+
 #endif /* VMSTATE_INCLUDED */
