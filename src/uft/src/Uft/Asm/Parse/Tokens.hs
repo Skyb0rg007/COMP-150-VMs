@@ -37,28 +37,33 @@ data Token_
     | BooleanChk
     | Car
     | Cdr
+    | Check
     | Colon
     | ColonEq
     | Cons
     | Div
     | Emptylist
+    | EOF
     | Eq
     | Error
+    | Expect
     | False
     | Function
     | FunctionChk
-    | Gt
+    | G
     | Geq
     | Goto
+    | Gt
     | Halt
     | Hash
     | IDiv
     | If
     | Label !Text
+    | LBrac
     | LBrace
-    | Lt
     | Leq
     | LParen
+    | Lt
     | Minus
     | Mod
     | Mul
@@ -73,6 +78,7 @@ data Token_
     | Print
     | Println
     | Printu
+    | RBrac
     | RBrace
     | Reg !Int
     | RParen
@@ -80,7 +86,6 @@ data Token_
     | Str !Text
     | SymbolChk
     | True
-    | EOF
     deriving (Show, Eq, Ord)
 
 -- | Pattern synonym for matching located 'Label's

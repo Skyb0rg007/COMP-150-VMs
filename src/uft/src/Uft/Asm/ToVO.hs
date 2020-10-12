@@ -50,6 +50,10 @@ instance ToVO Instr where
             let len = length body'
             pure . Text.unlines $
                 [".load " <> tshow r <> " function " <> tshow arity <> " " <> tshow len] ++ body'
+        LitCmd cmd r lit -> do
+            lit' <- toVO lit
+            cmd' <- toVO cmd
+            pure . Text.unwords $ [cmd', tshow r, lit']
         Cmd cmd (Just r) (Vector.toList -> args) ->
             (<>) <$> toVO cmd <*> pure (" " <> Text.unwords (map tshow (r:args)))
         Cmd cmd Nothing  (Vector.toList -> args) ->
@@ -64,6 +68,13 @@ instance ToVO Literal where
         LitFalse     -> pure "false"
         LitEmptylist -> pure "emptylist"
         LitNil       -> pure "nil"
+
+instance ToVO LitCmd where
+    toVO = pure . \case
+        Check     -> "check"
+        Expect    -> "expect"
+        SetGlobal -> "setglobal"
+        GetGlobal -> "getglobal"
 
 instance ToVO Cmd where
     toVO = pure . \case

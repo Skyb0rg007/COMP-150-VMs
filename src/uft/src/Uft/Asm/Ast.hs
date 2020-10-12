@@ -16,6 +16,7 @@ module Uft.Asm.Ast
       Prog
     , Instr (..)
     , Literal (..)
+    , LitCmd (..)
     , Cmd (..)
     -- * Helpers
     , commandArity
@@ -37,12 +38,21 @@ type Prog = [Instr]
 
 -- | A single Uft assembly instruction
 data Instr
-    = Deflabel !Text -- lbl:
-    | GotoLabel !Text -- goto lbl
-    | GotoOffset !Int -- goto n
-    | LoadLit !Int !Literal -- %1 := <lit>
-    | LoadFunc !Int !Int ![Instr] -- %1 := function n { <instr>* }
+    = Deflabel !Text                      -- lbl:
+    | GotoLabel !Text                     -- goto lbl
+    | GotoOffset !Int                     -- goto n
+    | LoadLit !Int !Literal               -- %1 := <lit>
+    | LoadFunc !Int !Int ![Instr]         -- %1 := function n { <instr>* }
+    | LitCmd !LitCmd !Int !Literal        -- <cmd> <reg> <literal>
     | Cmd !Cmd !(Maybe Int) !(Vector Int) -- [%1 :=] <cmd> <reg>*
+    deriving (Show, Eq, Ord)
+
+-- | Enumeration of all the possible assembly literal commands
+data LitCmd
+    = Check
+    | Expect
+    | SetGlobal
+    | GetGlobal
     deriving (Show, Eq, Ord)
 
 -- | Enumeration of all the possible assembly commands

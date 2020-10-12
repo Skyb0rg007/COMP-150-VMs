@@ -76,13 +76,16 @@ tokens :-
     <0> "boolean?"  { pureTok T.BooleanChk  }
     <0> "car"       { pureTok T.Car         }
     <0> "cdr"       { pureTok T.Cdr         }
+    <0> "check"     { pureTok T.Check       }
     <0> "cons"      { pureTok T.Cons        }
     <0> "emptylist" { pureTok T.Emptylist   }
     <0> "error"     { pureTok T.Error       }
+    <0> "expect"    { pureTok T.Expect      }
     <0> "false"     { pureTok T.False       }
     <0> "function"  { pureTok T.Function    }
     <0> "function?" { pureTok T.FunctionChk }
     <0> "goto"      { pureTok T.Goto        }
+    <0> "G"         { pureTok T.G           }
     <0> "halt"      { pureTok T.Halt        }
     <0> "hash"      { pureTok T.Hash        }
     <0> "if"        { pureTok T.If          }
@@ -91,8 +94,8 @@ tokens :-
     <0> "null?"     { pureTok T.NullChk     }
     <0> "number?"   { pureTok T.NumberChk   }
     <0> "pair?"     { pureTok T.PairChk     }
-    <0> "print"     { pureTok T.Print       }
     <0> "println"   { pureTok T.Println     }
+    <0> "print"     { pureTok T.Print       }
     <0> "printu"    { pureTok T.Printu      }
     <0> "symbol?"   { pureTok T.SymbolChk   }
     <0> "true"      { pureTok T.True        }
@@ -110,7 +113,7 @@ tokens :-
     <0> "<=" { pureTok T.Leq       }
     <0> "<"  { pureTok T.Lt        }
     <0> "("  { pureTok T.LParen    }
-    -- <0> "-"  { pureTok T.Minus     }
+    <0> "-"  { pureTok T.Minus     }
     <0> "%"  { pureTok T.Mod       }
     <0> "*"  { pureTok T.Mul       }
     <0> "\n" { pureTok T.Newline   }
@@ -118,6 +121,8 @@ tokens :-
     <0> "}"  { pureTok T.RBrace    }
     <0> ")"  { pureTok T.RParen    }
     <0> ";"  { pureTok T.Semicolon }
+    <0> "["  { pureTok T.LBrac     }
+    <0> "]"  { pureTok T.RBrac     }
 
     <0> "%" @decNum { regTok }
 

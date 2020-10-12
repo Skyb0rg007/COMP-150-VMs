@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 20ed7731d08de46693bd1f039799598aa3064a089f3feb00a36b7e226744cf45
+-- hash: f249feff0d07f220b51ce8b27ff1cdc68e1b28873db1c3de5b91185ec30a9ecb
 
 name:           uft
 version:        0.1.0.0
@@ -19,7 +19,6 @@ license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
-    ChangeLog.md
 
 source-repository head
   type: git
@@ -40,8 +39,12 @@ library
       Uft.Asm.Parse.Parser
       Uft.Asm.Parse.Tokens
       Uft.Asm.ToVO
+      Uft.KNormal.Ast
       Uft.Lambda.Ast
       Uft.Lambda.ClosureConvert
+      Uft.Scheme.Ast
+      Uft.Scheme.Disambiguate
+      Uft.Scheme.Unambiguous
   other-modules:
       Paths_uft
   hs-source-dirs:
@@ -59,6 +62,7 @@ library
     , containers
     , deepseq
     , dlist
+    , hashable
     , lens
     , megaparsec
     , mmorph
@@ -94,6 +98,7 @@ executable uft-exe
     , containers
     , deepseq
     , dlist
+    , hashable
     , lens
     , megaparsec
     , mmorph
@@ -131,6 +136,7 @@ test-suite uft-test
     , containers
     , deepseq
     , dlist
+    , hashable
     , lens
     , megaparsec
     , mmorph

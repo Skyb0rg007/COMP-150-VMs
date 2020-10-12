@@ -46,43 +46,48 @@ import qualified Uft.Asm.Parse.Tokens      as T
     BOOLEANCHK  { L _ T.BooleanChk  }
     CAR         { L _ T.Car         }
     CDR         { L _ T.Cdr         }
-    COLON       { L _ T.Colon       }
+    CHECK       { L _ T.Check       }
     COLONEQ     { L _ T.ColonEq     }
+    COLON       { L _ T.Colon       }
     CONS        { L _ T.Cons        }
     DIV         { L _ T.Div         }
     EMPTYLIST   { L _ T.Emptylist   }
     EQ          { L _ T.Eq          }
     ERROR       { L _ T.Error       }
+    EXPECT      { L _ T.Expect      }
     FALSE       { L _ T.False       }
-    FUNCTION    { L _ T.Function    }
     FUNCTIONCHK { L _ T.FunctionChk }
-    GT          { L _ T.Gt          }
+    FUNCTION    { L _ T.Function    }
     GEQ         { L _ T.Geq         }
+    G           { L _ T.G           }
     GOTO        { L _ T.Goto        }
+    GT          { L _ T.Gt          }
     HALT        { L _ T.Halt        }
     HASH        { L _ T.Hash        }
     IDIV        { L _ T.IDiv        }
     IF          { L _ T.If          }
     LABEL       { T.PatLabel $$     }
     LBRACE      { L _ T.LBrace      }
-    LT          { L _ T.Lt          }
+    LBRAC       { L _ T.LBrac       }
     LEQ         { L _ T.Leq         }
     LPAREN      { L _ T.LParen      }
+    LT          { L _ T.Lt          }
     MINUS       { L _ T.Minus       }
     MOD         { L _ T.Mod         }
     MUL         { L _ T.Mul         }
     NEWLINE     { L _ T.Newline     }
-    NIL         { L _ T.Nil         }
     NILCHK      { L _ T.NilChk      }
+    NIL         { L _ T.Nil         }
     NULLCHK     { L _ T.NullChk     }
     NUMBERCHK   { L _ T.NumberChk   }
     NUM         { T.PatNum $$       }
     PAIRCHK     { L _ T.PairChk     }
     PLUS        { L _ T.Plus        }
-    PRINT       { L _ T.Print       }
     PRINTLN     { L _ T.Println     }
+    PRINT       { L _ T.Print       }
     PRINTU      { L _ T.Printu      }
     RBRACE      { L _ T.RBrace      }
+    RBRAC       { L _ T.RBrac       }
     REG         { T.PatReg $$       }
     RPAREN      { L _ T.RParen      }
     SEMICOLON   { L _ T.Semicolon   }
@@ -117,8 +122,24 @@ instr :: { L [Instr] }
   | command             { L (locOf $1) [unLoc $1] }
 
 command :: { L Instr }
-  : GOTO LABEL { L ($1 <--> $2) $ GotoLabel (unLoc $2) }
-  | GOTO NUM   { L ($1 <--> $2) $ GotoOffset (round (unLoc $2)) }
+  : GOTO LABEL {
+      L ($1 <--> $2) $ GotoLabel (unLoc $2)
+  }
+  | GOTO NUM   {
+      L ($1 <--> $2) $ GotoOffset (round (unLoc $2))
+  }
+  | CHECK  REG literal {
+      L ($1 <--> $3) $ LitCmd Check (unLoc $2) (unLoc $3)
+  }
+  | EXPECT REG literal {
+      L ($1 <--> $3) $ LitCmd Expect (unLoc $2) (unLoc $3)
+  }
+  | REG COLONEQ G LBRAC literal RBRAC {
+      L ($1 <--> $6) $ LitCmd GetGlobal (unLoc $1) (unLoc $5)
+  }
+  | G LBRAC literal RBRAC COLONEQ REG {
+      L ($1 <--> $6) $ LitCmd SetGlobal (unLoc $6) (unLoc $3)
+  }
   | REG COLONEQ REG binop REG {
       L ($1 <--> $5) $ Cmd $4 (Just (unLoc $1)) [unLoc $3, unLoc $5]
   }
