@@ -22,7 +22,6 @@ module Uft.Asm.Parse.Lexer
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Except
-import           Data.ByteString.Internal  (w2c)
 import qualified Data.ByteString.Lazy      as Lazy.ByteString
 import qualified Data.ByteString.Lazy      as Lazy (ByteString)
 import           Data.ByteString.Lazy.Lens (unpackedChars)
@@ -227,15 +226,5 @@ lexTokens = do
     case t of
       L _ T.EOF -> pure [t]
       _         -> (t :) <$> lexTokens
-
--- This function is provided for the generated Alex tokenizer
--- Read the next character, updating the input state
-alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
-alexGetByte input =
-    case Lazy.ByteString.uncons (input^.alexInput_input) of
-      Nothing -> Nothing
-      Just (w, rest) -> Just $ (w,) $
-          input & alexInput_input .~ rest
-                & alexInput_sourcePos %~ (`advancePos` w2c w)
 }
 

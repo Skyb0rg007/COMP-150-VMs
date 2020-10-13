@@ -7,11 +7,12 @@
    Stability:   experimental
    Portability: ghc-8.8.4
 -}
+{-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns         #-}
 
 module Uft.Asm.ToVO
     ( ToVO (toVO)
@@ -33,7 +34,7 @@ tshow = Text.pack . show
 -- | Class for converting elements to Virtual Object code
 class ToVO a where
     -- | Convert to VO code. This operation may fail.
-    toVO :: a -> Either Text Text
+    toVO :: MonadError Text m => a -> m Text
 
 instance ToVO Prog where
     toVO prog = do
@@ -58,7 +59,7 @@ instance ToVO Instr where
             (<>) <$> toVO cmd <*> pure (" " <> Text.unwords (map tshow (r:args)))
         Cmd cmd Nothing  (Vector.toList -> args) ->
             (<>) <$> toVO cmd <*> pure (" " <> Text.unwords (map tshow args))
-        instr -> Left $ "Unable to translate " <> tshow instr
+        instr -> throwError $ "Unable to translate " <> tshow instr
 
 instance ToVO Literal where
     toVO = \case

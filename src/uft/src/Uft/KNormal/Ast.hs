@@ -22,6 +22,7 @@ import           Data.Text.Prettyprint.Doc
 import           Data.Vector               (Vector)
 import qualified Data.Vector               as Vector
 import           Uft.Asm.Ast               (Cmd, LitCmd)
+import           Uft.Scheme.Prims          (Prim (..))
 
 data Exp a
     = ExpLit !Literal
@@ -30,52 +31,19 @@ data Exp a
     | ExpLet !a !(Exp a) !(Exp a)
     | ExpSeq !(Exp a) !(Exp a)
     | ExpSet !a !(Exp a)
-    | ExpWhile !(Exp a) !(Exp a)
-    | ExpFuncode !(Vector a) !(Exp a)
-    | ExpFuncall !a !(Vector a)
-    | ExpCmd !Cmd !(Vector a)
-    | ExpLitCmd !LitCmd !(Vector a) !Literal
+    | ExpWhile !Text !(Exp a) !(Exp a)
+    | ExpFunCode !(Vector a) !(Exp a)
+    | ExpFunCall !a !(Vector a)
+    | ExpCmd !Prim !(Vector a)
+    | ExpLitCmd !Prim !(Vector a) !Literal
+    deriving (Show, Eq, Ord)
 
 data Literal
     = LitNum !Double
     | LitBool !Bool
     | LitSym !Text
     | LitEmpty
+    | LitNil
+    deriving (Show, Eq, Ord)
 
--- instance Pretty Exp where
-    -- pretty = \case
-        -- ExpLit lit -> pretty lit
-        -- ExpIf e1 e2 e3 -> "(if" <+> pretty e1 <+> pretty e2 <+> pretty e3 <> ")"
-        -- ExpLet kind binds e -> "(" <> pretty kind <+> "(" <> prettyBinds binds <> ")" <+> pretty e <> ")"
-        -- ExpVar x -> pretty x
-        -- ExpSet x e -> "(" <> pretty x <+> pretty e <> ")"
-        -- ExpWhile e1 e2 -> "(while" <+> pretty e1 <+> pretty e2 <> ")"
-        -- ExpBegin es -> "(begin" <> foldMap ((" " <>) . pretty) es <> ")"
-        -- ExpApply f args -> "(" <> pretty f  <> foldMap ((" " <>) . pretty) args <> ")"
-            -- where
-                -- prettyBinds :: Foldable f => f (Text, Exp) -> Doc ann
-                -- prettyBinds = vsep . foldr (\x acc -> prettyBind x : acc) mempty
-                -- prettyBind :: (Text, Exp) -> Doc ann
-                -- prettyBind (x, e) = "[" <> pretty x <+> pretty e <> "]"
-        -- ExpLambda args e -> "(lambda" <+> "(" <> hsep (toList (fmap pretty args)) <> ")" <+> pretty e <> "))"
-
--- instance Pretty LetKind where
-    -- pretty Let = "let"
-    -- pretty LetRec = "letrec"
-
--- instance Pretty Literal where
-    -- pretty = \case
-        -- LitSym x -> "'" <> pretty x
-        -- LitNum n -> pretty n
-        -- LitBool b -> if b then "#t" else "#f"
-        -- LitEmpty -> "'()"
-        -- LitPair a b -> "'(" <> go a b <> ")"
-            -- where
-                -- go :: Literal -> Literal -> Doc ann
-                -- go x = \case
-                    -- LitEmpty -> pretty x
-                    -- LitPair y ys -> " " <> pretty x <> go y ys
-                    -- y -> " . " <> pretty y
-
--- makeBaseFunctor ''Exp
 

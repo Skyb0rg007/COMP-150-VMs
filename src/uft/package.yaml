@@ -45,6 +45,7 @@ dependencies:
 - unordered-containers
 - vector
 - hashable
+- bimap
 
 ghc-options:
 - -Wcompat

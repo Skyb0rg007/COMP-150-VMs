@@ -14,6 +14,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TupleSections              #-}
 
 module Uft.Asm.Parse.Monad
     ( AlexInput (..)
@@ -27,6 +28,7 @@ module Uft.Asm.Parse.Monad
     , parserState_lexState
     , Parser
     , runParser
+    , alexGetByte
     ) where
 
 import           Control.Lens
@@ -34,7 +36,10 @@ import           Control.Lens.TH
 import           Control.Monad.Except
 import           Control.Monad.State
 import qualified Data.ByteString.Lazy as Lazy (ByteString)
+import qualified Data.ByteString.Lazy as Lazy.ByteString
+import           Data.ByteString.Internal  (w2c)
 import           Data.Loc
+import           Data.Word (Word8)
 import           Data.Text            (Text)
 
 -- | The parser's input state
@@ -76,3 +81,14 @@ runParser (P m) pos input = runExcept $ m `evalStateT` pState
 
 makeLenses ''AlexInput
 makeLenses ''ParserState
+
+-- This function is provided for the generated Alex tokenizer
+-- Read the next character, updating the input state
+alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
+alexGetByte input =
+    case Lazy.ByteString.uncons (input^.alexInput_input) of
+      Nothing -> Nothing
+      Just (w, rest) -> Just $ (w,) $
+          input & alexInput_input .~ rest
+                & alexInput_sourcePos %~ (`advancePos` w2c w)
+

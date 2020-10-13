@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f249feff0d07f220b51ce8b27ff1cdc68e1b28873db1c3de5b91185ec30a9ecb
+-- hash: 337aa925c7f71fa7d6af59ba9709b558a1ecebd98b18f579fd425c84629b2cc2
 
 name:           uft
 version:        0.1.0.0
@@ -27,24 +27,22 @@ source-repository head
 library
   exposed-modules:
       SExpr
-      SExpr.Ast
-      SExpr.Parse
-      SExpr.Parse.Lexer
-      SExpr.Parse.Monad
-      SExpr.Parse.Tokens
       Uft.Asm.Ast
       Uft.Asm.LabelElim
+      Uft.Asm.Parse
       Uft.Asm.Parse.Lexer
       Uft.Asm.Parse.Monad
       Uft.Asm.Parse.Parser
       Uft.Asm.Parse.Tokens
       Uft.Asm.ToVO
       Uft.KNormal.Ast
-      Uft.Lambda.Ast
-      Uft.Lambda.ClosureConvert
+      Uft.KNormal.ToScheme
       Uft.Scheme.Ast
       Uft.Scheme.Disambiguate
-      Uft.Scheme.Unambiguous
+      Uft.Scheme.Parse
+      Uft.Scheme.Prims
+      Uft.UnambiguousScheme.Ast
+      Uft.UnambiguousScheme.ToKNormal
   other-modules:
       Paths_uft
   hs-source-dirs:
@@ -57,6 +55,7 @@ library
       aeson
     , array
     , base >=4.7 && <5
+    , bimap
     , binary
     , bytestring
     , containers
@@ -93,6 +92,7 @@ executable uft-exe
       aeson
     , array
     , base >=4.7 && <5
+    , bimap
     , binary
     , bytestring
     , containers
@@ -123,6 +123,8 @@ test-suite uft-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Uft.Lambda.Ast
+      Uft.Lambda.ClosureConvert
       Paths_uft
   hs-source-dirs:
       test
@@ -131,6 +133,7 @@ test-suite uft-test
       aeson
     , array
     , base >=4.7 && <5
+    , bimap
     , binary
     , bytestring
     , containers

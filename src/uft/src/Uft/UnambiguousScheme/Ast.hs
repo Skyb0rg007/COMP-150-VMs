@@ -8,9 +8,8 @@
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeFamilies      #-}
 
-module Uft.Scheme.Ast
-    ( Prog
-    , Stmt (..)
+module Uft.UnambiguousScheme.Ast
+    ( Stmt (..)
     , Exp (..)
     , ExpF (..)
     , LetKind (..)
@@ -18,7 +17,6 @@ module Uft.Scheme.Ast
     ) where
 
 import           Control.Monad.Except
-import           Data.Foldable             (traverse_)
 import           Data.Foldable             (toList)
 import           Data.Functor.Foldable.TH  (makeBaseFunctor)
 import           Data.Maybe                (isJust)
@@ -27,6 +25,7 @@ import qualified Data.Text                 as Text
 import           Data.Text.Prettyprint.Doc
 import           Data.Vector               (Vector)
 import qualified Data.Vector               as Vector
+import           Uft.Scheme.Prims          (Prim (..))
 
 type Prog = [Stmt]
 
@@ -34,19 +33,22 @@ data Stmt
     = Val !Text !Exp
     | Define !Text !(Vector Text) !Exp
     | Exp !Exp
-    | CheckExpect !Exp !Exp
-    | CheckAssert !Exp
+    | CheckExpect !(Text, Exp) !(Text, Exp)
+    | CheckAssert !(Text, Exp)
     deriving (Show, Eq, Ord)
 
 data Exp
     = ExpLit !Literal
-    | ExpVar !Text
-    | ExpSet !Text !Exp
+    | ExpLocalVar !Text
+    | ExpGlobalVar !Text
+    | ExpSetLocal !Text !Exp
+    | ExpSetGlobal !Text !Exp
     | ExpIf !Exp !Exp !Exp
     | ExpWhile !Exp !Exp
     | ExpBegin !(Vector Exp)
-    | ExpApply !Exp !(Vector Exp)
-    | ExpLet !LetKind !(Vector (Text, Exp)) !(Vector Exp)
+    | ExpFunApply !Exp !(Vector Exp)
+    | ExpPrimApply !Prim !(Vector Exp)
+    | ExpLet !LetKind !(Vector (Text, Exp)) !Exp
     | ExpLambda !(Vector Text) !Exp
     deriving (Show, Eq, Ord)
 
@@ -57,7 +59,6 @@ data Literal
     = LitSym !Text
     | LitNum !Double
     | LitBool !Bool
-    | LitPair !Literal !Literal
     | LitEmpty
     deriving (Show, Eq, Ord)
 
@@ -71,25 +72,28 @@ instance Pretty Stmt where
         Val x e -> "(val" <+> pretty x <+> pretty e <> ")"
         Define f args e -> "(define" <+> pretty f <+> "(" <> hsep (toList (fmap pretty args)) <> ")" <+> pretty e <>")"
         Exp e -> pretty e
-        CheckExpect e1 e2 -> "(check-expect" <+> pretty e1 <+> pretty e2 <> ")"
-        CheckAssert e -> "(check-assert" <+> pretty e <> ")"
+        CheckExpect (_, e1) (_, e2) -> "(check-expect" <+> pretty e1 <+> pretty e2 <> ")"
+        CheckAssert (_, e) -> "(check-assert" <+> pretty e <> ")"
 
 instance Pretty Exp where
     pretty = \case
         ExpLit lit -> pretty lit
-        ExpVar x -> pretty x
-        ExpSet x e -> "(" <> pretty x <+> pretty e <> ")"
+        ExpLocalVar x -> pretty x
+        ExpGlobalVar x -> pretty x
+        ExpSetLocal x e -> "(" <> pretty x <+> pretty e <> ")"
+        ExpSetGlobal x e -> "(" <> pretty x <+> pretty e <> ")"
         ExpIf e1 e2 e3 -> "(if" <+> pretty e1 <+> pretty e2 <+> pretty e3 <> ")"
         ExpWhile e1 e2 -> "(while" <+> pretty e1 <+> pretty e2 <> ")"
         ExpBegin es -> "(begin" <> foldMap ((" " <>) . pretty) es <> ")"
-        ExpApply f args -> "(" <> pretty f  <> foldMap ((" " <>) . pretty) args <> ")"
-        ExpLet kind binds e -> "(" <> pretty kind <+> "(" <> prettyBinds binds <> ")" <+> hsep (toList (fmap pretty e)) <> ")"
+        ExpFunApply f args -> "(" <> pretty f  <> foldMap ((" " <>) . pretty) args <> ")"
+        ExpLet kind binds e -> "(" <> pretty kind <+> "(" <> prettyBinds binds <> ")" <+> pretty e <> ")"
             where
                 prettyBinds :: Foldable f => f (Text, Exp) -> Doc ann
                 prettyBinds = vsep . foldr (\x acc -> prettyBind x : acc) mempty
                 prettyBind :: (Text, Exp) -> Doc ann
                 prettyBind (x, e) = "[" <> pretty x <+> pretty e <> "]"
         ExpLambda args e -> "(lambda" <+> "(" <> hsep (toList (fmap pretty args)) <> ")" <+> pretty e <> "))"
+        ExpPrimApply f args -> "(" <> pretty f  <> foldMap ((" " <>) . pretty) args <> ")"
 
 instance Pretty LetKind where
     pretty Let = "let"
@@ -101,13 +105,6 @@ instance Pretty Literal where
         LitNum n -> pretty n
         LitBool b -> if b then "#t" else "#f"
         LitEmpty -> "'()"
-        LitPair a b -> "'(" <> go a b <> ")"
-            where
-                go :: Literal -> Literal -> Doc ann
-                go x = \case
-                    LitEmpty -> pretty x
-                    LitPair y ys -> " " <> pretty x <> go y ys
-                    y -> " . " <> pretty y
 
 makeBaseFunctor ''Exp
 
