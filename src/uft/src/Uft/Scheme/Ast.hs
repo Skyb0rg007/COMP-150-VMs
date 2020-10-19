@@ -50,7 +50,7 @@ data Exp
     | ExpLambda !(Vector Text) !Exp
     deriving (Show, Eq, Ord)
 
-data LetKind = Let | LetRec
+data LetKind = Let | LetStar | LetRec
     deriving (Show, Eq, Ord)
 
 data Literal
@@ -93,6 +93,7 @@ instance Pretty Exp where
 
 instance Pretty LetKind where
     pretty Let = "let"
+    pretty LetStar = "let*"
     pretty LetRec = "letrec"
 
 instance Pretty Literal where

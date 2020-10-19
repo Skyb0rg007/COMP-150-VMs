@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 337aa925c7f71fa7d6af59ba9709b558a1ecebd98b18f579fd425c84629b2cc2
+-- hash: 04c1de6ca41182e59dd466c19308bf97186d5038e76dbc9a630df39581fb5168
 
 name:           uft
 version:        0.1.0.0
@@ -26,7 +26,9 @@ source-repository head
 
 library
   exposed-modules:
-      SExpr
+      Megaparsec.Util
+      Type.OpenADT
+      Type.VarF
       Uft.Asm.Ast
       Uft.Asm.LabelElim
       Uft.Asm.Parse
@@ -37,16 +39,19 @@ library
       Uft.Asm.ToVO
       Uft.KNormal.Ast
       Uft.KNormal.ToScheme
+      Uft.KNormal.ToVO
       Uft.Scheme.Ast
       Uft.Scheme.Disambiguate
       Uft.Scheme.Parse
       Uft.Scheme.Prims
       Uft.UnambiguousScheme.Ast
       Uft.UnambiguousScheme.ToKNormal
+      Uft.Util
   other-modules:
       Paths_uft
   hs-source-dirs:
       src
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
   build-tools:
       alex
@@ -58,8 +63,11 @@ library
     , bimap
     , binary
     , bytestring
+    , constraints
     , containers
+    , data-fix
     , deepseq
+    , deriving-compat
     , dlist
     , hashable
     , lens
@@ -71,9 +79,10 @@ library
     , prettyprinter
     , prettyprinter-ansi-terminal
     , recursion-schemes
-    , souffle-haskell
+    , row-types
     , srcloc
     , string-conversions
+    , tagged
     , text
     , transformers
     , transformers-base
@@ -87,6 +96,7 @@ executable uft-exe
       Paths_uft
   hs-source-dirs:
       app
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
@@ -95,8 +105,11 @@ executable uft-exe
     , bimap
     , binary
     , bytestring
+    , constraints
     , containers
+    , data-fix
     , deepseq
+    , deriving-compat
     , dlist
     , hashable
     , lens
@@ -108,9 +121,10 @@ executable uft-exe
     , prettyprinter
     , prettyprinter-ansi-terminal
     , recursion-schemes
-    , souffle-haskell
+    , row-types
     , srcloc
     , string-conversions
+    , tagged
     , text
     , transformers
     , transformers-base
@@ -123,23 +137,30 @@ test-suite uft-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      ADTSpec
       Uft.Lambda.Ast
       Uft.Lambda.ClosureConvert
       Paths_uft
   hs-source-dirs:
       test
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      aeson
+      QuickCheck
+    , aeson
     , array
     , base >=4.7 && <5
     , bimap
     , binary
     , bytestring
+    , constraints
     , containers
+    , data-fix
     , deepseq
+    , deriving-compat
     , dlist
     , hashable
+    , hspec
     , lens
     , megaparsec
     , mmorph
@@ -149,9 +170,10 @@ test-suite uft-test
     , prettyprinter
     , prettyprinter-ansi-terminal
     , recursion-schemes
-    , souffle-haskell
+    , row-types
     , srcloc
     , string-conversions
+    , tagged
     , text
     , transformers
     , transformers-base

@@ -10,6 +10,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Uft.Asm.Ast
     ( 
     -- * AST
@@ -58,6 +59,7 @@ data LitCmd
 -- | Enumeration of all the possible assembly commands
 data Cmd
     = Abs
+    | Add
     | BooleanChk
     | Car
     | Cdr
@@ -101,6 +103,7 @@ data Literal
 commandArity :: Cmd -> Int
 commandArity = \case
     Abs         -> 1
+    Add         -> 2
     BooleanChk  -> 1
     Car         -> 1
     Cdr         -> 1

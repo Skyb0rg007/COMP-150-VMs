@@ -1,19 +1,21 @@
 
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Uft.Scheme.Parse
     ( parseScheme
     ) where
 
-import           Data.Bifunctor (first)
 import           Control.Monad              (void)
 import           Control.Monad.Except
+import           Data.Bifunctor             (first)
 import           Data.Char                  (chr, digitToInt)
 import           Data.Foldable              (traverse_)
 import           Data.Foldable              (toList)
 import           Data.Functor.Foldable.TH   (makeBaseFunctor)
 import           Data.HashSet               (HashSet)
 import qualified Data.HashSet               as HashSet
+import           Data.Loc
 import           Data.Maybe                 (catMaybes, fromMaybe, isJust)
 import           Data.Ratio                 ((%))
 import           Data.Text                  (Text)
@@ -25,12 +27,12 @@ import           Data.Void                  (Void)
 import           Data.Word                  (Word8)
 import           Debug.Trace
 import           GHC.Float                  (int2Double)
+import           Megaparsec.Util
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import           Uft.Scheme.Prims          (Prim (..))
-
 import           Uft.Scheme.Ast
+import           Uft.Scheme.Prims           (Prim (..))
 
 -- | Parser type
 -- No custom error type -> Void
@@ -132,7 +134,8 @@ schemeIdent = label "identifier" . lexeme . fmap Text.pack $
                 sequence [explicitSign, signSubsequent]
             <|> sequence [explicitSign, char '.', dotSubsequent]
             <|> sequence [char '.', dotSubsequent]
-        peculiarIdent' = (++) <$> pecularStart <*> many subsequent
+        peculiarIdent' = pure <$> explicitSign
+                     <|> (++) <$> pecularStart <*> many subsequent
 
 -- | Parses a scheme boolean, in accordance with R7RS
 -- #t #f #true #false
@@ -277,16 +280,14 @@ schemeDatum =
     <|> schemeAbbrev
     where
         schemeList = do
-            void $ symbol "("
-            xs <- many schemeDatum
-            void $ symbol ")"
+            xs <- betweenSexp $ many schemeDatum
             pure $ foldl LitPair LitEmpty xs
         schemeDotList = do
-            void $ symbol "("
-            xs <- many schemeDatum
-            void $ symbol "."
-            x <- schemeDatum
-            void $ symbol ")"
+            (xs, x) <- betweenSexp $ do
+                xs <- many schemeDatum
+                void $ symbol "."
+                x <- schemeDatum
+                pure (xs, x)
             pure $ foldl LitPair x xs
         -- XXX: Currently parsing vectors as lists
         schemeVector = do
@@ -303,19 +304,22 @@ schemeDatum =
             <|> "unquote-splicing" <$ try (string ",@")
             <|> "unquote"          <$ char ','
 
+betweenSexp :: P a -> P a
+betweenSexp p = (symbol "(" *> p <* symbol ")")
+            <|> (symbol "[" *> p <* symbol "]")
+
 -- | Parses a scheme expression
 schemeExpr :: P Exp
 schemeExpr = label "expression" $
         ExpVar <$> schemeIdent
     <|> ExpLit <$> selfEvaluating
-    <|> between (symbol "(") (symbol ")") (choice
+    <|> (char '\'' >> ExpLit <$> schemeDatum)
+    <|> betweenSexp (choice
         [ label "quote" $
             symbol "quote" >> ExpLit <$> schemeDatum
-        , label "quote" $
-            char '\'' >> ExpLit <$> schemeDatum
         , label "lambda" $ do
             void $ symbol "lambda"
-            args <- between (symbol "(") (symbol ")") $ many schemeIdent
+            args <- betweenSexp $ many schemeIdent
             ExpLambda (Vector.fromList args) <$> schemeExpr
         , label "if" $
             symbol "if" >> ExpIf <$> schemeExpr <*> schemeExpr <*> schemeExpr
@@ -324,10 +328,10 @@ schemeExpr = label "expression" $
         , label "begin" $
             symbol "begin" >> ExpBegin . Vector.fromList <$> many schemeExpr
         , label "let" $ do
-            kind <- Let <$ symbol "let" <|> LetRec <$ symbol "letrec"
-            let parseBind = between (symbol "(") (symbol ")") $
+            kind <- LetRec <$ symbol "letrec" <|> LetStar <$ symbol "let*" <|> Let <$ symbol "let"
+            let parseBind = betweenSexp $
                     (,) <$> schemeIdent <*> schemeExpr
-            binds <- between (symbol "(") (symbol ")") $ many parseBind
+            binds <- betweenSexp $ many parseBind
             body <- some schemeExpr
             pure $ ExpLet kind (Vector.fromList binds) (Vector.fromList body)
         , choice [symbol "check-expect", symbol "check-assert", symbol "val"]
@@ -350,7 +354,7 @@ schemeExpr = label "expression" $
 -- | Parses a scheme statement
 schemeStmt :: P Stmt
 schemeStmt = label "statement" $
-        try (between (symbol "(") (symbol ")") $ choice
+        try (betweenSexp $ choice
             [ symbol "val" >> Val <$> schemeIdent <*> schemeExpr
             , symbol "check-expect" >> CheckExpect <$> schemeExpr <*> schemeExpr
             , symbol "check-assert" >> CheckAssert <$> schemeExpr
@@ -362,7 +366,7 @@ schemeProg :: P Prog
 schemeProg = label "program" $ intertokenSpace >> many schemeStmt
 
 -- | Parses a scheme program, or produces a prettied error message
-parseScheme :: FilePath -> Text -> Either Text Prog
+parseScheme :: MonadError Text m => FilePath -> Text -> m Prog
 parseScheme file input =
-    first (Text.pack . errorBundlePretty) $ parse schemeProg file input
+    liftEither $ first (Text.pack . errorBundlePretty) $ parse schemeProg file input
 

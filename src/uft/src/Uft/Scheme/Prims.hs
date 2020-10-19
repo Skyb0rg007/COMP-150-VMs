@@ -22,6 +22,10 @@ data Prim
     | PrimExpect
     | PrimCheckAssert
     | PrimLoadLiteral
+    | PrimAdd
+    | PrimPrint
+    | PrimPrintln
+    | PrimPrintu
     deriving (Show, Eq, Ord)
 
 primArity :: Prim -> Int
@@ -33,6 +37,10 @@ primArity = \case
     PrimExpect      -> 2
     PrimCheckAssert -> 2
     PrimLoadLiteral -> 2
+    PrimAdd         -> 2
+    PrimPrint       -> 1
+    PrimPrintln     -> 1
+    PrimPrintu      -> 1
 
 primNameMap :: Bimap Prim Text
 primNameMap = Bimap.fromList
@@ -43,6 +51,10 @@ primNameMap = Bimap.fromList
     , (,) PrimExpect      "expect"
     , (,) PrimCheckAssert "check-assert"
     , (,) PrimLoadLiteral "loadliteral"
+    , (,) PrimAdd         "+"
+    , (,) PrimPrint       "print"
+    , (,) PrimPrintln     "println"
+    , (,) PrimPrintu      "printu"
     ]
 
 primName :: Prim -> Text

@@ -36,7 +36,7 @@ data Exp a
     | ExpFunCall !a !(Vector a)
     | ExpCmd !Prim !(Vector a)
     | ExpLitCmd !Prim !(Vector a) !Literal
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 data Literal
     = LitNum !Double

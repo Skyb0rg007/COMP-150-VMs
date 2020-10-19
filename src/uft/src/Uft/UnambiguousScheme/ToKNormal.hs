@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedLists   #-}
 
 module Uft.UnambiguousScheme.ToKNormal
-    ( 
+    ( unambToKNorm
     ) where
 
 import           Control.Monad.Except
@@ -25,9 +25,15 @@ import           Uft.Scheme.Prims
 
 unambToKNorm
     :: MonadError Text m
+    => U.Prog
+    -> m [KN.Exp Text]
+unambToKNorm = traverse cvtStmt
+
+cvtStmt
+    :: MonadError Text m
     => U.Stmt
     -> m (KN.Exp Text)
-unambToKNorm = \case
+cvtStmt = \case
     U.Exp (U.ExpLet U.Let [(t, U.ExpLambda args e)] (U.ExpSetLocal f (U.ExpLocalVar t')))
       | t == t' -> do
           e' <- cvtExp e
@@ -61,6 +67,9 @@ cvtExp = \case
       | all isVar args -> pure $ KN.ExpFunCall f (fmap getVar args)
     U.ExpPrimApply f args 
       | all isVar args -> pure $ KN.ExpCmd f (fmap getVar args)
+      | all isVar (Vector.init args) 
+      , U.ExpLit l <- Vector.last args -> pure $
+          KN.ExpLitCmd f (fmap getVar (Vector.init args)) (cvtLit l)
     U.ExpLet U.Let [(x, e1)] e2 -> KN.ExpLet x <$> cvtExp e1 <*> cvtExp e2
     e -> throwError $ "Unable to convert to KNormal form: " <> Text.pack (show e)
 

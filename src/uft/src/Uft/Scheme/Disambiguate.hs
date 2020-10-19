@@ -23,6 +23,7 @@ import qualified Data.Vector                           as Vector
 import qualified Uft.Scheme.Ast                        as In
 import           Uft.Scheme.Prims
 import qualified Uft.UnambiguousScheme.Ast             as Out
+import           Data.Foldable (foldlM)
 
 -- Construct a HashSet from a foldable structure
 hashSet
@@ -58,12 +59,18 @@ etaExpand p = Out.ExpLambda args $ Out.ExpPrimApply p (Out.ExpLocalVar <$> args)
             take (primArity p) $
                 map Text.singleton ['a' .. 'z']
 
--- | Convert the ambiguous Scheme syntax into unambiguous scheme
 disambiguate
+    :: MonadError Text m
+    => In.Prog
+    -> m Out.Prog
+disambiguate = traverse disambiguateStmt
+
+-- | Convert the ambiguous Scheme syntax into unambiguous scheme
+disambiguateStmt
     :: forall m. MonadError Text m
     => In.Stmt
     -> m Out.Stmt
-disambiguate = \case
+disambiguateStmt = \case
     In.Val x e -> Out.Val x <$> disambiguateExp HashSet.empty e
     In.Define x args e -> Out.Define x args <$> disambiguateExp (hashSet args) e
     In.Exp e -> Out.Exp <$> disambiguateExp HashSet.empty e
@@ -96,13 +103,21 @@ disambiguateExp locals = \case
          in Out.ExpLet Out.Let
             <$> (traverse . traverse) go binds
             <*> fmap Out.ExpBegin (traverse go' body)
+    In.ExpLet In.LetStar binds body -> do
+        let f :: (HashSet Text, Out.Exp -> Out.Exp) -> (Text, In.Exp) -> m (HashSet Text, Out.Exp -> Out.Exp)
+            f (locals, cont) (x, e) = do
+                e' <- disambiguateExp locals e
+                pure (HashSet.insert x locals, cont . Out.ExpLet Out.Let [(x, e')])
+        (locals', cont) <- foldlM f (locals, id) binds
+        body' <- Out.ExpBegin <$> traverse (disambiguateExp locals') body
+        pure $ cont body'
     In.ExpLet In.LetRec binds body ->
-        let go' = disambiguateExp locals'
-            locals' = hashSet (fmap fst binds) <> locals
+        let locals' = hashSet (fmap fst binds) <> locals
+            go' = disambiguateExp locals'
          in Out.ExpLet Out.LetRec <$> (traverse . traverse) go' binds <*> fmap Out.ExpBegin (traverse go' body)
     In.ExpApply (In.ExpVar f) args
       | Just (p, n) <- isPrim f ->
-          if Vector.length args == n 
+          if Vector.length args == n
              then Out.ExpPrimApply p <$> traverse go args
              else Out.ExpFunApply (etaExpand p) <$> traverse go args
     In.ExpApply f args -> Out.ExpFunApply <$> go f <*> traverse go args

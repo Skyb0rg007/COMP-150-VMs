@@ -9,7 +9,8 @@
 {-# LANGUAGE TypeFamilies      #-}
 
 module Uft.UnambiguousScheme.Ast
-    ( Stmt (..)
+    ( Prog
+    , Stmt (..)
     , Exp (..)
     , ExpF (..)
     , LetKind (..)

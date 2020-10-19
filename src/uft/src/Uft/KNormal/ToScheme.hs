@@ -21,46 +21,36 @@ import qualified Uft.Scheme.Ast as Scheme
 import qualified Uft.KNormal.Ast as KN
 import           Uft.Scheme.Prims
 
-knormToScheme
-    :: MonadError Text m
-    => KN.Exp Text
-    -> m Scheme.Prog
-knormToScheme = fmap (pure . Scheme.Exp) . cvtExp
+knormToScheme :: KN.Exp Text -> Scheme.Prog
+knormToScheme = pure . Scheme.Exp . cvtExp
 
-cvtExp
-    :: MonadError Text m
-    => KN.Exp Text
-    -> m Scheme.Exp
+cvtExp :: KN.Exp Text -> Scheme.Exp
 cvtExp = \case
-    KN.ExpLit lit -> pure . Scheme.ExpLit $ cvtLit lit
-    KN.ExpVar x   -> pure $ Scheme.ExpVar x
-    KN.ExpIf e1 e2 e3 -> Scheme.ExpIf <$> cvtExp e1 <*> cvtExp e2 <*> cvtExp e3
-    KN.ExpLet x e1 e2 -> do
-        e1' <- cvtExp e1
-        e2' <- cvtExp e2
-        pure $ Scheme.ExpLet Scheme.Let
-            (Vector.singleton (x, e1'))
-            (Vector.singleton e2')
+    KN.ExpLit lit -> Scheme.ExpLit $ cvtLit lit
+    KN.ExpVar x   -> Scheme.ExpVar x
+    KN.ExpIf e1 e2 e3 -> Scheme.ExpIf (cvtExp e1) (cvtExp e2) (cvtExp e3)
+    KN.ExpLet x e1 e2 ->
+        Scheme.ExpLet Scheme.Let
+            (Vector.singleton (x, cvtExp e1))
+            (Vector.singleton (cvtExp e2))
     KN.ExpSeq e1 e2 ->
-        Scheme.ExpBegin . Vector.fromList <$> traverse cvtExp [e1, e2]
+        Scheme.ExpBegin $ Vector.fromList (map cvtExp [e1, e2])
     KN.ExpSet x e ->
-        Scheme.ExpSet x <$> cvtExp e
+        Scheme.ExpSet x (cvtExp e)
     KN.ExpWhile x e1 e2 -> do
-        e1' <- cvtExp e1
-        e2' <- cvtExp e2
-        pure $ Scheme.ExpWhile
+        Scheme.ExpWhile
             (Scheme.ExpLet Scheme.Let
-                (Vector.singleton (x, e1'))
+                (Vector.singleton (x, cvtExp e1))
                 (Vector.singleton $ Scheme.ExpVar x))
-            e2'
+            (cvtExp e2)
     KN.ExpFunCode args body ->
-        Scheme.ExpLambda args <$> cvtExp body
+        Scheme.ExpLambda args (cvtExp body)
     KN.ExpFunCall f args ->
-        pure $ Scheme.ExpApply (Scheme.ExpVar f) (fmap Scheme.ExpVar args)
+        Scheme.ExpApply (Scheme.ExpVar f) (fmap Scheme.ExpVar args)
     KN.ExpCmd prim args ->
-        pure $ Scheme.ExpApply (Scheme.ExpVar (primName prim)) (fmap Scheme.ExpVar args)
+        Scheme.ExpApply (Scheme.ExpVar (primName prim)) (fmap Scheme.ExpVar args)
     KN.ExpLitCmd prim args lit ->
-        pure $ Scheme.ExpApply
+        Scheme.ExpApply
             (Scheme.ExpVar (primName prim))
             (Vector.snoc (fmap Scheme.ExpVar args) (Scheme.ExpLit $ cvtLit lit))
 
