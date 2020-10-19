@@ -1,0 +1,54 @@
+
+COMP 150VM Homework Submission
+
+What person or group is submitting this homework?
+
+  - Skye Soss
+
+What work are you proud of?
+
+  - The variable renaming because Haskell does it in a single line
+
+What code would you like help improving?  Are there bugs you'd like
+help finding during code review?
+
+  - N/A. I'm currently working on a rewrite using compositional data structures
+    inspired by Datatypes a la Carte
+
+What code, if any, would you especially like the course staff to
+review?  Why?
+
+  - None
+
+In this course, all code may be shared freely.  Aside from code that
+is distributed with the assignment, does your submission contain any
+other code that you got from someone else?  If so, what code is it
+(file names and line numbers please) and who supplied it?
+
+  - Nope
+
+In response to last week's code review, have you made any material
+changes?  What were they?  By file name and line number, where are
+they found in the code?  If you remember, who helped you during code
+review?
+
+  - I started the rewrite after Norman said I should go all out with the Haskell stuff
+
+
+We have a plenary code review tomorrow.  Are you willing to present
+(as a group, if applicable)?
+
+  - I don't think that's a good idea considering how I program in Haskell
+
+Supposing you are not selected to present at tomorrow's plenary code
+review, what code would you like to see presented?  What would you
+learn the most from?
+
+  - Most of my questions relate to how Norman's starter code was implemented,
+    so I don't have many questions that can be reasonably answered.
+
+Again supposing you are not selected to present, who in your group is
+willing to serve on the review panel?
+
+- I can!
+

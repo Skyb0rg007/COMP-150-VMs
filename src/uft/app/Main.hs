@@ -54,27 +54,10 @@ pipeline fileName fileContent = do
     unamb   :: Unamb.Prog         <- Scheme.disambiguate scheme
     -- liftIO $ print $ pretty unamb
     knorms  :: [KNormal.Exp Text] <- Unamb.unambToKNorm unamb
+    -- liftIO $ print $ fmap (pretty . KNormal.knormToScheme) knorms
     asm     :: Asm.Prog           <- foldMapM KNormal.knormToAsm knorms
-    liftIO $ print asm
+    vo      :: Text               <- Asm.toVO asm
+    liftIO $ Text.IO.putStr vo
     -- let scheme' :: Scheme.Prog = KNormal.knormToScheme knorm
     -- liftIO $ print $ pretty scheme'
 
--- asmMain :: IO ()
--- asmMain = do
-    -- input:_ <- getArgs
-    -- case parseAsm "<cmdline>" (Text.pack input) of
-      -- Left err -> Text.IO.putStrLn err
-      -- Right ast -> do
-          -- case labelElim ast of
-            -- Left err -> print err
-            -- Right ast' ->
-                -- case toVO ast' of
-                  -- Left err -> print err
-                  -- Right vo -> Text.IO.putStrLn vo
-
--- schemeMain :: IO ()
--- schemeMain = do
-    -- input:_ <- getArgs
-    -- case parseScheme "" (Text.pack input) of
-      -- Left err -> Text.IO.putStrLn err
-      -- Right prog -> print $ pretty prog

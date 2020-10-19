@@ -28,6 +28,7 @@ instruction_info instructions[] = {
   { "mul", Multiply, parseR3, "rX := rY * rZ" }, { "*", Multiply, parseR3, "rX := rY * rZ" },
   { "abs", Abs, parseR2, "rX := abs(rY)" },
   { "hash", Hash, parseR2, "rX := hash(rY)" },
+  { "copyreg", CopyReg, parseR2, "rX := rY" },
 };
 
 int number_of_instructions = sizeof(instructions) / sizeof(instructions[0]);

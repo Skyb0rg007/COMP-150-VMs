@@ -20,13 +20,15 @@ module Uft.Asm.ToVO
 
 import           Control.Monad.Except
 import           Control.Monad.State
+import           Data.Char            (ord)
 import           Data.Functor         ((<&>))
 import           Data.Map.Strict      (Map)
 import qualified Data.Map.Strict      as Map
 import           Data.Text            (Text)
 import qualified Data.Text            as Text
+import qualified Data.Vector          as Vector
+import           GHC.Float            (double2Int)
 import           Uft.Asm.Ast
-import qualified Data.Vector as Vector
 
 tshow :: Show a => a -> Text
 tshow = Text.pack . show
@@ -63,8 +65,10 @@ instance ToVO Instr where
 
 instance ToVO Literal where
     toVO = \case
-        LitNum n     -> pure (tshow n)
-        LitStr s     -> pure (tshow s)
+        LitNum n     -> pure (tshow (double2Int n))
+        LitStr s     -> pure $
+            "string " <> tshow (Text.length s) <> " " <>
+                Text.intercalate " " (map (tshow . ord) (Text.unpack s))
         LitTrue      -> pure "true"
         LitFalse     -> pure "false"
         LitEmptylist -> pure "emptylist"
@@ -80,6 +84,7 @@ instance ToVO LitCmd where
 instance ToVO Cmd where
     toVO = pure . \case
         Abs         -> "abs"
+        Add         -> "+"
         BooleanChk  -> "boolean?"
         Car         -> "car"
         Cdr         -> "cdr"
@@ -107,3 +112,4 @@ instance ToVO Cmd where
         Println     -> "println"
         Printu      -> "printu"
         SymbolChk   -> "symbol?"
+        CopyReg     -> "copyreg"

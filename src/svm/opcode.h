@@ -24,6 +24,7 @@ typedef enum opcode {
     Multiply,    // R3    -- R(X) := R(Y) * R(Z)
     Abs,         // R2    -- R(X) := |R(Y)|
     Hash,        // R2    -- R(X) := hash(R(Y))
+    CopyReg,     // R2    -- R(X) := R(Y)
     Unimp,       // stand-in for opcodes not yet implemented
                  // used to query number of opcodes, so must be last
 } Opcode;

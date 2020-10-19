@@ -61,6 +61,7 @@ data Cmd
     = Abs
     | Add
     | BooleanChk
+    | CopyReg
     | Car
     | Cdr
     | Cons
@@ -105,6 +106,7 @@ commandArity = \case
     Abs         -> 1
     Add         -> 2
     BooleanChk  -> 1
+    CopyReg     -> 1
     Car         -> 1
     Cdr         -> 1
     Cons        -> 2

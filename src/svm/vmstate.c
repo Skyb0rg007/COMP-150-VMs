@@ -40,12 +40,6 @@ int literal_slot(VMState vm, Value literal) {
     return vector_size(&vm->literals) - 1;
 }
 
-Value literal_value(VMState state, unsigned index) {
-  (void) state; (void) index; // replace with real code
-  assert(0);
-}
-
-int literal_count(VMState state) {
-  (void) state; // replace with real code
-  assert(0);
+int literal_count(VMState vm) {
+    return vector_size(&vm->literals);
 }

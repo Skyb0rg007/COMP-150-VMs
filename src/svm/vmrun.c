@@ -58,7 +58,8 @@ void vmrun(VMState vm, struct VMFunction *fun) {
         [Subtract] = &&do_subtract,
         [Multiply] = &&do_multiply,
         [Abs] = &&do_abs,
-        [Hash] = &&do_hash
+        [Hash] = &&do_hash,
+        [CopyReg] = &&do_copyreg
     };
     /* Increments the instruction pointer, jumping to the label in the jump table */
     #define DISPATCH() do {            \
@@ -205,6 +206,16 @@ do_hash:
                     vm,
                     reg1,
                     mkNumberValue(hashvalue(vmstate_get_reg(vm, reg2))));
+            DISPATCH();
+        }
+do_copyreg:
+        {
+            uint8_t reg1 = uX(i);
+            uint8_t reg2 = uY(i);
+            vmstate_set_reg(
+                    vm,
+                    reg1,
+                    vmstate_get_reg(vm, reg2));
             DISPATCH();
         }
     }

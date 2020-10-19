@@ -3,6 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedLists #-}
 
 module Uft.KNormal.ToVO
     ( knormToAsm
@@ -54,15 +55,18 @@ knormToAsm = go <=< traverse registerNum
         compileLitPrim = \case
             PrimCheck -> Asm.Check
             PrimExpect -> Asm.Expect
+            PrimSetGlobal -> Asm.SetGlobal
         go :: KN.Exp Int -> m Asm.Prog
         go = \case
             KN.ExpLet x (KN.ExpLit lit) body ->
                 (Asm.LoadLit x (compileLit lit) :) <$> go body
+            KN.ExpLet x (KN.ExpVar y) body ->
+                (Asm.Cmd Asm.CopyReg (Just x) [y] :) <$> go body
             KN.ExpLet x (KN.ExpCmd p args) body 
               | (cmd, True) <- compilePrim p ->
-                  pure [Asm.Cmd cmd (Just x) args]
+                  (Asm.Cmd cmd (Just x) args :) <$> go body
               | (cmd, False) <- compilePrim p ->
-                  pure [Asm.Cmd cmd Nothing args, Asm.LoadLit x Asm.LitNil]
+                  ([Asm.Cmd cmd Nothing args, Asm.LoadLit x Asm.LitNil] ++) <$> go body
             KN.ExpCmd p args 
               | (cmd, True) <- compilePrim p ->
                   pure [Asm.Cmd cmd (Just $ Vector.head args) (Vector.tail args)]
@@ -70,7 +74,11 @@ knormToAsm = go <=< traverse registerNum
                   pure [Asm.Cmd cmd Nothing args]
             KN.ExpLitCmd p args lit ->
                 pure [Asm.LitCmd (compileLitPrim p) (Vector.head args) (compileLit lit)]
+            KN.ExpSeq e1 e2 ->
+                (++) <$> go e1 <*> go e2
+            KN.ExpSet x (KN.ExpVar y) ->
+                pure [Asm.Cmd Asm.CopyReg (Just x) [y]]
             -- KN.ExpLit lit -> pure $ compileLit lit
-            kn -> error $ show $ pretty $ knormToScheme $ fmap (Text.pack . show) kn
+            kn -> error $ show $ kn
 
 
