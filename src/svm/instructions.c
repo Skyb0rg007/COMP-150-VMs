@@ -29,6 +29,9 @@ instruction_info instructions[] = {
   { "abs", Abs, parseR2, "rX := abs(rY)" },
   { "hash", Hash, parseR2, "rX := hash(rY)" },
   { "copyreg", CopyReg, parseR2, "rX := rY" },
+  { "call", Call, parseR3, "rX := call rY (rY+1, ..., rZ)" },
+  { "return", Return, parseR1, "return rX" },
+  { "tailcall", Tailcall, parseR2, "tailcall rX (rX+1, ..., rY)" },
 };
 
 int number_of_instructions = sizeof(instructions) / sizeof(instructions[0]);

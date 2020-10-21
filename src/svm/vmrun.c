@@ -59,7 +59,10 @@ void vmrun(VMState vm, struct VMFunction *fun) {
         [Multiply] = &&do_multiply,
         [Abs] = &&do_abs,
         [Hash] = &&do_hash,
-        [CopyReg] = &&do_copyreg
+        [CopyReg] = &&do_copyreg,
+        [Call] = &&do_call,
+        [Return] = &&do_return,
+        [Tailcall] = &&do_tailcall
     };
     /* Increments the instruction pointer, jumping to the label in the jump table */
     #define DISPATCH() do {            \
@@ -217,6 +220,18 @@ do_copyreg:
                     reg1,
                     vmstate_get_reg(vm, reg2));
             DISPATCH();
+        }
+do_call:
+        {
+            assert(0);
+        }
+do_return:
+        {
+            assert(0);
+        }
+do_tailcall:
+        {
+            assert(0);
         }
     }
     #undef DISPATCH
