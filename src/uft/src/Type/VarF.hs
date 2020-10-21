@@ -23,16 +23,23 @@ module Type.VarF
     , apExtendIndexLaw
     , apUniqueLaw
     -- * Lifting of functions in Data.Row
-    , impossibleF
-    , trialF
     , caseonF
+    , coerceVarF
+    , diversifyF
+    , eraseF
+    , eraseWithLabelsF
+    , eraseZipF
+    , impossibleF
+    , labelsF
     , multiTrialF
+    , traverseF
+    , trialF
     , viewF
     -- * Re-export
     , Label (..)
     ) where
 
-import           Data.Bifunctor         (bimap, second)
+import           Data.Bifunctor         (bimap, first)
 import           Data.Constraint        ((:-), withDict, (\\))
 import           Data.Constraint.Unsafe (unsafeCoerceConstraint)
 import           Data.Functor.Classes
@@ -40,11 +47,14 @@ import           Data.Functor.Const     (Const (Const, getConst))
 import           Data.Functor.Product   (Product (Pair))
 import           Data.Kind              (Constraint, Type)
 import           Data.Proxy             (Proxy (Proxy))
+import           Data.Coerce (Coercible)
 import           Data.Row
 import           Data.Row.Internal
 import           Data.Row.Switch
-import           Data.Row.Variants      (extend, view)
+import           Data.Row.Variants
+import           Data.String            (IsString)
 import           GHC.TypeLits           (Symbol)
+import           Text.Read
 
 type family ApRow (r :: Row (k -> Type)) (x :: k) :: Row Type where
     ApRow (R r) x = R (ApLT r x)
@@ -245,17 +255,64 @@ type OpenAlg r l f v =
 impossibleF :: VarF Empty a -> b
 impossibleF = impossible . unVarF
 
+diversifyF
+    :: forall r' x r.
+       ((ApRow r x .\/ ApRow r' x) ~ ApRow (r .\/ r') x)
+    => VarF r x
+    -> VarF (r .\/ r') x
+diversifyF = VarF . diversify @(ApRow r' x) @(ApRow r x) . unVarF
+
+eraseF
+    :: forall c r x b.
+       Forall (ApRow r x) c
+    => (forall a. c a => a -> b)
+    -> VarF r x
+    -> b
+eraseF f = snd @String . eraseWithLabelsF @c f
+
+eraseWithLabelsF
+    :: forall c r x s b.
+       (Forall (ApRow r x) c, IsString s)
+    => (forall a. c a => a -> b)
+    -> VarF r x
+    -> (s, b)
+eraseWithLabelsF f = eraseWithLabels @c f . unVarF
+
+eraseZipF
+    :: forall c r x b.
+       Forall (ApRow r x) c
+    => (forall a. c a => a -> a -> b)
+    -> VarF r x
+    -> VarF r x
+    -> Maybe b
+eraseZipF f (VarF a) (VarF b) = eraseZip @c f a b
+
+traverseF
+    :: forall c f r x.
+       (Forall (ApRow r x) c, Applicative f)
+    => (forall a. c a => a -> f a)
+    -> VarF r x
+    -> f (VarF r x)
+traverseF f = fmap VarF . Data.Row.Variants.traverse @c f . unVarF
+
+labelsF :: forall r c s. (IsString s, Forall r c) => [s]
+labelsF = labels @r @c @s
+
+coerceVarF
+    :: forall r1 r2 x y.
+       BiForall (ApRow r1 x) (ApRow r2 y) Coercible
+    => VarF r1 x
+    -> VarF r2 y
+coerceVarF = VarF . coerceVar . unVarF
+
 trialF
-    :: forall k l (r :: Row (k -> Type)) x.
-    ( KnownSymbol l
-    , (ApRow r x .! l) ~ Var (ApRow (r .- l) x)
-    )
+    :: forall k l (r :: Row (k -> Type)) x. KnownSymbol l
     => VarF r x
     -> Label l
-    -> Either (ApRow r x .! l) (VarF (r .- l) x)
-trialF (VarF v) l = 
+    -> Either (VarF (r .- l) x) (ApRow r x .! l)
+trialF (VarF v) l =
     withDict (apRemoveLaw @k @l @r @x) $
-        second VarF $ trial v l
+        first VarF $ trial v l
 
 caseonF
     :: BiForall r (ApRow v x) (AppliesTo y)

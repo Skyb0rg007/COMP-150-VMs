@@ -1,5 +1,5 @@
 
-module Megaparsec.Util
+module Text.Megaparsec.Util
     ( getPos
     , wrapLoc
     ) where

@@ -16,7 +16,10 @@ import qualified Data.Text.IO                    as Text.IO
 import           Data.Text.Prettyprint.Doc
 import           System.Environment              (getArgs)
 import           System.Exit
-import qualified Uft.Asm.Ast                     as Asm
+
+main = pure ()
+
+{- import qualified Uft.Asm.Ast                     as Asm
 import qualified Uft.Asm.LabelElim               as Asm
 import qualified Uft.Asm.Parse                   as Asm
 import qualified Uft.Asm.ToVO                    as Asm
@@ -60,4 +63,4 @@ pipeline fileName fileContent = do
     liftIO $ Text.IO.putStr vo
     -- let scheme' :: Scheme.Prog = KNormal.knormToScheme knorm
     -- liftIO $ print $ pretty scheme'
-
+ -}

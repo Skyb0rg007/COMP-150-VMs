@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 04c1de6ca41182e59dd466c19308bf97186d5038e76dbc9a630df39581fb5168
+-- hash: 90aa41790b1941ff930ba85db25f0974fa430b60d1ec46e20147da303d9348cb
 
 name:           uft
 version:        0.1.0.0
@@ -26,53 +26,40 @@ source-repository head
 
 library
   exposed-modules:
-      Megaparsec.Util
+      Text.Megaparsec.Util
       Type.OpenADT
+      Type.OpenADT.TH
       Type.VarF
-      Uft.Asm.Ast
-      Uft.Asm.LabelElim
-      Uft.Asm.Parse
-      Uft.Asm.Parse.Lexer
-      Uft.Asm.Parse.Monad
-      Uft.Asm.Parse.Parser
-      Uft.Asm.Parse.Tokens
-      Uft.Asm.ToVO
-      Uft.KNormal.Ast
-      Uft.KNormal.ToScheme
-      Uft.KNormal.ToVO
+      Uft.Located
+      Uft.Pretty
+      Uft.Primitives
       Uft.Scheme.Ast
-      Uft.Scheme.Disambiguate
       Uft.Scheme.Parse
-      Uft.Scheme.Prims
-      Uft.UnambiguousScheme.Ast
-      Uft.UnambiguousScheme.ToKNormal
       Uft.Util
   other-modules:
       Paths_uft
   hs-source-dirs:
       src
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns DerivingVia
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
   build-tools:
       alex
     , happy
   build-depends:
-      aeson
-    , array
+      array
     , base >=4.7 && <5
     , bimap
     , binary
     , bytestring
     , constraints
     , containers
-    , data-fix
     , deepseq
     , deriving-compat
     , dlist
+    , generic-data
     , hashable
     , lens
     , megaparsec
-    , mmorph
     , monad-control
     , mtl
     , ordered-containers
@@ -80,9 +67,10 @@ library
     , prettyprinter-ansi-terminal
     , recursion-schemes
     , row-types
+    , singletons
     , srcloc
     , string-conversions
-    , tagged
+    , template-haskell
     , text
     , transformers
     , transformers-base
@@ -96,25 +84,23 @@ executable uft-exe
       Paths_uft
   hs-source-dirs:
       app
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns DerivingVia
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      aeson
-    , array
+      array
     , base >=4.7 && <5
     , bimap
     , binary
     , bytestring
     , constraints
     , containers
-    , data-fix
     , deepseq
     , deriving-compat
     , dlist
+    , generic-data
     , hashable
     , lens
     , megaparsec
-    , mmorph
     , monad-control
     , mtl
     , ordered-containers
@@ -122,9 +108,10 @@ executable uft-exe
     , prettyprinter-ansi-terminal
     , recursion-schemes
     , row-types
+    , singletons
     , srcloc
     , string-conversions
-    , tagged
+    , template-haskell
     , text
     , transformers
     , transformers-base
@@ -138,16 +125,16 @@ test-suite uft-test
   main-is: Spec.hs
   other-modules:
       ADTSpec
+      THSpec
       Uft.Lambda.Ast
       Uft.Lambda.ClosureConvert
       Paths_uft
   hs-source-dirs:
       test
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns DerivingVia
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
-    , aeson
     , array
     , base >=4.7 && <5
     , bimap
@@ -155,15 +142,14 @@ test-suite uft-test
     , bytestring
     , constraints
     , containers
-    , data-fix
     , deepseq
     , deriving-compat
     , dlist
+    , generic-data
     , hashable
     , hspec
     , lens
     , megaparsec
-    , mmorph
     , monad-control
     , mtl
     , ordered-containers
@@ -171,9 +157,10 @@ test-suite uft-test
     , prettyprinter-ansi-terminal
     , recursion-schemes
     , row-types
+    , singletons
     , srcloc
     , string-conversions
-    , tagged
+    , template-haskell
     , text
     , transformers
     , transformers-base

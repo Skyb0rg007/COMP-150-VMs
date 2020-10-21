@@ -1,7 +1,8 @@
 
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TemplateHaskell  #-}
+
+-- {-# OPTIONS_GHC -ddump-splices #-}
 
 module ADTSpec (main, spec) where
 
@@ -9,16 +10,19 @@ import           Control.Monad         (forM_)
 import           Data.Deriving
 import           Data.Functor.Classes
 import           Data.Functor.Foldable
-import           Data.Row
-import qualified Data.Row.Variants     as V
+-- import           Data.Row
+-- import qualified Data.Row.Variants     as V
+import           Generic.Data
+import           GHC.Generics          (Generic, Generic1)
 import           Test.Hspec
 import           Test.QuickCheck
 import           Type.OpenADT
-import           Type.VarF
+import           Type.OpenADT.TH
+import           Data.Kind (Type)
 
 -- * Types
 
-newtype LitIntF a = LitIntF' Int
+newtype LitIntF (a :: Type) = LitIntF' Int
     deriving (Functor, Show, Eq, Ord)
 
 data LitPairF a = LitPairF' !a !a
@@ -45,7 +49,7 @@ pattern LitPairF :: OpenAlg r "litPair" LitPairF v
                 => v
                 -> v
                 -> VarF r v
-pattern LitPairF x y <- VarF (V.view #litPair -> Just (LitPairF' x y))
+pattern LitPairF x y <- (viewF #litPair -> Just (LitPairF' x y))
     where LitPairF x y = VarF (IsJust #litPair (LitPairF' x y))
 
 pattern LitPair :: OpenAlg r "litPair" LitPairF (OpenADT r)
@@ -57,7 +61,7 @@ pattern LitPair x y <- Fix (VarF (IsJust (Label :: Label "litPair") (LitPairF' x
 
 pattern LitNilF :: OpenAlg r "litNil" LitNilF v
                 => VarF r v
-pattern LitNilF <- VarF (V.view #litNil -> Just LitNilF')
+pattern LitNilF <- (viewF #litNil -> Just LitNilF')
     where LitNilF = VarF (IsJust #litNil LitNilF')
 
 pattern LitNil :: OpenAlg r "litNil" LitNilF (OpenADT r)

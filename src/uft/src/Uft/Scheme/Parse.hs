@@ -27,12 +27,11 @@ import           Data.Void                  (Void)
 import           Data.Word                  (Word8)
 import           Debug.Trace
 import           GHC.Float                  (int2Double)
-import           Megaparsec.Util
+import           Text.Megaparsec.Util
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Uft.Scheme.Ast
-import           Uft.Scheme.Prims           (Prim (..))
 
 -- | Parser type
 -- No custom error type -> Void
@@ -263,7 +262,7 @@ schemeNumber = label "number" . lexeme $ do
 
 -- | Parses literals, inspired by R7RS
 -- Doesn't support scheme labels
-schemeDatum :: P Literal
+schemeDatum :: P Lit
 schemeDatum =
         try (LitBool <$> schemeBool)
     <|> try (LitNum <$> schemeNumber)
@@ -320,9 +319,9 @@ schemeExpr = label "expression" $
         , label "lambda" $ do
             void $ symbol "lambda"
             args <- betweenSexp $ many schemeIdent
-            ExpLambda (Vector.fromList args) <$> schemeExpr
+            ExpLambda (Vector.fromList args) <$> fmap Vector.fromList (some schemeExpr)
         , label "if" $
-            symbol "if" >> ExpIf <$> schemeExpr <*> schemeExpr <*> schemeExpr
+            symbol "if" >> ExpIf <$> schemeExpr <*> schemeExpr <*> optional schemeExpr
         , label "set" $
             symbol "set" >> ExpSet <$> schemeIdent <*> schemeExpr
         , label "begin" $
@@ -355,11 +354,11 @@ schemeExpr = label "expression" $
 schemeStmt :: P Stmt
 schemeStmt = label "statement" $
         try (betweenSexp $ choice
-            [ symbol "val" >> Val <$> schemeIdent <*> schemeExpr
-            , symbol "check-expect" >> CheckExpect <$> schemeExpr <*> schemeExpr
-            , symbol "check-assert" >> CheckAssert <$> schemeExpr
+            [ symbol "val" >> StmtVal <$> schemeIdent <*> schemeExpr
+            , symbol "check-expect" >> StmtCheckExpect <$> schemeExpr <*> schemeExpr
+            , symbol "check-assert" >> StmtCheckAssert <$> schemeExpr
             ])
-    <|> Exp <$> schemeExpr
+    <|> StmtExp <$> schemeExpr
 
 -- | Parses a scheme program
 schemeProg :: P Prog

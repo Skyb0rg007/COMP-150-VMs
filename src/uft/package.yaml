@@ -20,23 +20,19 @@ description:         Please see the README on GitHub at <https://github.com/Skyb
 
 dependencies:
 - base >= 4.7 && < 5
-- aeson
-- constraints
 - array
 - bimap
 - binary
 - bytestring
+- constraints
 - containers
-# - data-diverse
-- data-fix
-- deepseq
 - deepseq
 - deriving-compat
 - dlist
+- generic-data
 - hashable
 - lens
 - megaparsec
-- mmorph
 - monad-control
 - mtl
 - ordered-containers
@@ -44,18 +40,16 @@ dependencies:
 - prettyprinter-ansi-terminal
 - recursion-schemes
 - row-types
+- singletons
 - srcloc
 - string-conversions
-- tagged
+- template-haskell
 - text
 - transformers
 - transformers-base
 - unordered-containers
 - vector
 
-# - haskus-utils-variant
-# - open-adt
-# - singletons
 # - souffle-haskell
 
 ghc-options:
@@ -76,6 +70,7 @@ default-extensions:
 - DeriveFunctor
 - DeriveGeneric
 - DeriveTraversable
+- DerivingStrategies
 - ExistentialQuantification
 - FlexibleContexts
 - FlexibleInstances
@@ -98,6 +93,7 @@ default-extensions:
 - TypeFamilyDependencies
 - TypeOperators
 - ViewPatterns
+- DerivingVia
 
 library:
   source-dirs: src
