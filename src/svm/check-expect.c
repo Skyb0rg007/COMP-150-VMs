@@ -83,4 +83,5 @@ void report_unit_tests(void) {
             printf("%d of %d tests passed.\n", npassed, ntests);
         break;
     }
+    ntests = npassed = 0; // reset the counters
 }

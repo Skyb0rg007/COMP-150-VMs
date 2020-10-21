@@ -162,6 +162,7 @@ void bprintvalue(Printbuf output, va_list_box *box) {
     case Block:      OUTPUT("gc-block %p", (void *) v.block); break;
     case CFunction:  OUTPUT("primitive %s", v.cf->name); break;
     case VMFunction: OUTPUT("function %p", (void *) v.f); break;
+    case VMClosure:  OUTPUT("closure %p", (void *) v.hof); break;
     case LightUserdata: OUTPUT("userdata %p", (void *) v.p); break;
     case ConsCell:   print_list(output, v); break;
     case Emptylist:  bufputs(output, "'()"); break;
