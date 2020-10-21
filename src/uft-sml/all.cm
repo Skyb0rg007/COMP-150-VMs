@@ -65,6 +65,14 @@ group is
   projectkn.sml
 
 
+  (********** CODE GENERATION ******)
+
+  asmutil.sml       (* convenience functions to generate assembly code *)
+  codegen.sml       (* translate KNF to assembly (written by students) *)
+
+  knrename.sml      (* convert names to registers in KNF (for testing) *)
+
+
   (*********** UNIVERSAL FORWARD TRANSLATOR **********)
 
   ioutil.sml

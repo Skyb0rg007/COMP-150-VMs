@@ -1129,6 +1129,7 @@ datatype def  = VAL    of name * exp
 datatype unit_test = CHECK_EXPECT of exp * exp
                    | CHECK_ASSERT of exp
                    | CHECK_ERROR  of exp
+                   | CHECK_EXPECT' of value * string * value * string
 (* definition of [[xdef]] (shared) S207b *)
 datatype xdef = DEF    of def
               | USE    of name
@@ -1677,6 +1678,7 @@ fun freedef (VAL (x, e)) = insert (x, free e)
   | freedef (DEFINE (f, lambda)) = insert (f, free (LAMBDA lambda))
 
 fun freetest (CHECK_EXPECT (e, e')) = union (free e, free e')
+  | freetest (CHECK_EXPECT' _) = []
   | freetest (CHECK_ASSERT e) = free e
   | freetest (CHECK_ERROR e)  = free e
 
@@ -1753,7 +1755,7 @@ fun testIsGood (test, rho) =
       val _ = op whatWasExpected  : exp * value error -> string
       val _ = op asSyntacticValue : exp -> value option
       (* shared [[checkExpectPassesWith]], which calls [[outcome]] S78a *)
-      val cxfailed = "check-expect failed: "
+      val cxfailed = "Check-expect failed:"
       fun checkExpectPassesWith equals (checkx, expectx) =
         case (outcome checkx, outcome expectx)
           of (OK check, OK expect) => 
@@ -1773,6 +1775,14 @@ fun testIsGood (test, rho) =
                          whatWasExpected (expectx, ERROR msg),
                                                             ", but evaluating ",
                          expString expectx, " caused this error: ", msg]
+      (* type declarations for consistency checking *)
+      val _ = op checkExpectPassesWith : (value * value -> bool) -> exp * exp ->
+                                                                            bool
+      fun checkExpect'PassesWith equals (checkv, checks, expectv, expects) =
+          equals (checkv, expectv) orelse
+          failtest [cxfailed, " expected ", checks,
+                    " to evaluate to ", valueString expectv, ", but it's ",
+                         valueString checkv, "."]
       (* type declarations for consistency checking *)
       val _ = op checkExpectPassesWith : (value * value -> bool) -> exp * exp ->
                                                                             bool
@@ -1808,6 +1818,7 @@ fun testIsGood (test, rho) =
       val _ = op checkErrorPasses : exp -> bool
       fun checkExpectPasses (cx, ex) = checkExpectPassesWith testEqual (cx, ex)
       fun passes (CHECK_EXPECT (c, e)) = checkExpectPasses (c, e)
+        | passes (CHECK_EXPECT' args)  = checkExpect'PassesWith testEqual args
         | passes (CHECK_ASSERT c)      = checkAssertPasses c
         | passes (CHECK_ERROR c)       = checkErrorPasses  c
 (* type declarations for consistency checking *)
@@ -1829,8 +1840,37 @@ fun processPredefined (def,basis) =
 val _ = op noninteractive    : interactivity
 val _ = op processPredefined : def * basis -> basis
 (* shared read-eval-print loop and [[processPredefined]] S211b *)
+
+val currentUnitTests : unit_test list ref option ref = ref NONE
+
+fun addUnitTest t =
+   case !currentUnitTests
+     of SOME tests => tests := t :: !tests
+      | NONE => raise InternalError "add unit test, but no list"
+
+val pendingCheck : (value * string) option ref = ref NONE
+
+fun check (v, v') =
+  case !pendingCheck
+   of NONE => pendingCheck := SOME (v, valueString v')
+    | SOME _ => raise RuntimeError "two checks with no expect"
+
+fun expect (v, v') =
+  case !pendingCheck
+   of NONE => raise RuntimeError "expect with no check"
+    | SOME (check, s) => ( addUnitTest (CHECK_EXPECT' (check, s, v, valueString v'))
+                         ; pendingCheck := NONE
+                         )
+
+val check  = fn x => (check  x; LUANIL)
+val expect = fn x => (expect x; LUANIL)
+
+exception Halt
+
 fun readEvalPrintWith errmsg (xdefs, basis, interactivity) =
   let val unitTests = ref []
+      val oldUnitTests = !currentUnitTests
+      val _ = currentUnitTests := SOME unitTests
 
 (* definition of [[processXDef]], which can modify [[unitTests]] and call [[errmsg]] S212b *)
       fun processXDef (xd, basis) =
@@ -1850,7 +1890,7 @@ fun readEvalPrintWith errmsg (xdefs, basis, interactivity) =
                                                                         (*OMIT*)
             fun caught msg = (errmsg (stripAtLoc msg); basis)
             val _ = resetOverflowCheck ()     (* OMIT *)
-        in  withHandlers try xd caught
+        in  withHandlers try xd caught handle Halt => basis
         end 
       (* type declarations for consistency checking *)
       val _ = op errmsg     : string -> unit
@@ -1861,6 +1901,7 @@ fun readEvalPrintWith errmsg (xdefs, basis, interactivity) =
 val _ = op readEvalPrintWith : (string -> unit) ->                     xdef
                                          stream * basis * interactivity -> basis
 val _ = op processXDef       : xdef * basis -> basis
+      val _ = currentUnitTests := oldUnitTests
   in  basis
   end
 (* type declarations for consistency checking *)
@@ -1891,6 +1932,7 @@ fun arityError n args =
                       " but got " ^ intString (length args) ^ " arguments")
 fun unaryOp  f = (fn [a]    => f a      | args => arityError 1 args)
 fun binaryOp f = (fn [a, b] => f (a, b) | args => arityError 2 args)
+fun nullaryOp f = (fn []    => f () | args => arityError 0 args)
 (* type declarations for consistency checking *)
 val _ = op unaryOp  : (value         -> value) -> (value list -> value)
 val _ = op binaryOp : (value * value -> value) -> (value list -> value)
@@ -1974,6 +2016,9 @@ val primitiveBasis =
                                             | v => raise RuntimeError
                                                            (
                                 "cdr applied to non-list " ^ valueString v))) ::
+                        ("expect",  binaryOp expect) ::
+                        ("check",   binaryOp check) ::
+                        ("halt",   nullaryOp (fn () => raise Halt)) ::
                         (* primitives for \uscheme\ [[::]] S209c *)
                         ("println", unaryOp (fn v => (print (valueString v ^
                                                                   "\n"); v))) ::

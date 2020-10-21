@@ -1,8 +1,9 @@
 (* Properties of primitives (SVM instructions) *)
 
-(* You'll use the signature, but you don't need to know the
-    implementation---except to be sure that every primitive
-    has a corresponding VM instruction of the same name. *)
+(* In module 6, you'll need to extend the implementation to
+   account for any exciting SVM instructions you may have defined.
+   You'll see here NR's allergy to long stretches of repetitive code.
+ *)
 
 structure Primitive :> sig
   (* A primitive corresponds to an SVM instruction *)
@@ -21,72 +22,90 @@ structure Primitive :> sig
      *)
 
   (* these are the primitives that are available to source code *)
-  val find : string -> primitive option
+  val find : string -> primitive option  (* intended only for primitives that
+                                            appear in source code; internal
+                                            compiler primitives should be named
+                                            using the values below *)
   val exposedNames : string list
 
+
+  (* observers for properties of primitives *)
   val name  : primitive -> string   (* used in assembly code & object code *)
   val arity : primitive -> int      (* used to make LAMBDAs on demand *)
-
   val throwsError : primitive -> bool
      (* primitive does not return, so is OK to use in a value context *)
 
   (* these are the primitives that are used inside the compiler *)
-  val cons : primitive
-  val setglobal : primitive
-  val getglobal : primitive
-  val check  : primitive
-  val expect : primitive
+  val cons         : primitive   (* for building quoted lists *)
+  val loadliteral  : primitive
+  val setglobal    : primitive
+  val getglobal    : primitive
+  val check        : primitive   (* for converting check-expect to K-normal form *)
+  val expect       : primitive   (* for converting check-expect to K-normal form *)
   val check_assert : primitive
-  val loadliteral : primitive
 end
   =
 struct
+
+  (* Pure, register-setting primitives grouped by arity.  You can extend these lists *)
 
   val binary  = [ "+", "-", "*", "/", "<", ">", "cons", "=" ]
   val unary   = [ "boolean?", "null?", "number?", "pair?", "function?", "nil?"
                 , "symbol?", "car", "cdr"
                 ]
+
+
+  (* Three different groups of side-effecting primitives.  To the compiler,
+     `error` looks a lot like `print`, but only `error` throws an error,
+     so I feel compelled to separate them. *)
+
   val side_effecting = [ "print", "printu" ]
-  val error = [ "error" ]
-  val checky = [ "check", "expect" ] (* not sure if exposing these to source is smart *)
+  val error          = [ "error" ]
+  val checky = [ "check", "expect" ]  (* arity 2 *)
+
+
+
+  (* Representation of a primitive, with observers *)
 
   type base = { name : string, arity : int }
   datatype primitive = SETS_REGISTER of base | HAS_EFFECT of base
-
-  fun add arity ty names prims =
-    foldl (fn (name, prims) => ty { name = name, arity = arity } :: prims)
-          prims names
-
-  infixr 0 $
-  fun f $ x = f x
-
-  val primitives : primitive list =
-    add 2 SETS_REGISTER binary $
-    add 1 SETS_REGISTER unary  $
-    add 1 HAS_EFFECT side_effecting $
-    add 1 HAS_EFFECT error $
-    add 2 HAS_EFFECT checky $
-    []
 
   fun base (SETS_REGISTER b) = b
     | base (HAS_EFFECT    b) = b
 
   val name  = #name  o base
   val arity = #arity o base
-  
+
   fun throwsError p = #name (base p) = "error"
 
-  fun find x = List.find (fn p => name p = x) primitives
+  (* building and using the list of primitives *)
+
+  fun add arity ty names prims =
+    foldl (fn (name, prims) => ty { name = name, arity = arity } :: prims)
+          prims names
+
+  val primitives : primitive list =  (* you can also extend this definition *)
+    ( add 2 SETS_REGISTER binary
+    o add 1 SETS_REGISTER unary
+    o add 1 HAS_EFFECT side_effecting
+    o add 1 HAS_EFFECT error
+    o add 2 HAS_EFFECT checky
+    ) []
 
   val exposedNames = map name primitives
+  
+  fun find x = List.find (fn p => name p = x) primitives
 
-  val cons         = SETS_REGISTER { name = "cons", arity = 2 }
-  val setglobal    = HAS_EFFECT { name = "setglobal", arity = 2 }
-  val getglobal    = SETS_REGISTER { name = "getglobal", arity = 1 }
-  val check        = HAS_EFFECT { name = "check", arity = 2 }
-  val expect       = HAS_EFFECT { name = "expect", arity = 2 }
-  val check_assert = HAS_EFFECT { name = "check-assert", arity = 2 }
-  val loadliteral  = SETS_REGISTER { name = "loadliteral", arity = 1 }
+
+  (* Primitives used internally *)
+
+  val cons         = SETS_REGISTER { name = "cons",         arity = 2 }
+  val setglobal    = HAS_EFFECT    { name = "setglobal",    arity = 2 }
+  val getglobal    = SETS_REGISTER { name = "getglobal",    arity = 1 }
+  val check        = HAS_EFFECT    { name = "check",        arity = 2 }
+  val expect       = HAS_EFFECT    { name = "expect",       arity = 2 }
+  val check_assert = HAS_EFFECT    { name = "check-assert", arity = 2 }
+  val loadliteral  = SETS_REGISTER { name = "loadliteral",  arity = 1 }
 
 end
 

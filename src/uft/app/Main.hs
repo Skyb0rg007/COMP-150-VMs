@@ -49,6 +49,16 @@ pipeline
     -> Text
     -> m ()
 pipeline fileName fileContent = do
+    asm <- liftEither $ Asm.parseAsm fileName fileContent
+    vo <- Asm.toVO asm
+    liftIO $ Text.IO.putStr vo
+{- 
+pipeline
+    :: (MonadIO m, MonadError Text m)
+    => FilePath
+    -> Text
+    -> m ()
+pipeline fileName fileContent = do
     scheme  :: Scheme.Prog        <- Scheme.parseScheme fileName fileContent
     -- liftIO $ print $ pretty scheme
     unamb   :: Unamb.Prog         <- Scheme.disambiguate scheme
@@ -60,4 +70,4 @@ pipeline fileName fileContent = do
     liftIO $ Text.IO.putStr vo
     -- let scheme' :: Scheme.Prog = KNormal.knormToScheme knorm
     -- liftIO $ print $ pretty scheme'
-
+ -}
