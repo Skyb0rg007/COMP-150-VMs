@@ -323,12 +323,12 @@ caseonF r = caseon r . unVarF
 
 multiTrialF
     :: forall u v x.
-    ( AllUniqueLabels (ApRow (v .\\ u) x)
-    , Forall (ApRow v x .\\ ApRow (v .\\ u) x) Unconstrained1
-    , (ApRow v x .\\ ApRow (v .\\ u) x) ~ ApRow u x
-    )
+       ( AllUniqueLabels (ApRow u x)
+       , Forall (ApRow v x .\\ ApRow u x) Unconstrained1
+       , (ApRow v x .\\ ApRow u x) ~ ApRow (v .\\ u) x
+       )
     => VarF v x
-    -> Either (VarF u x) (VarF (v .\\ u) x)
+    -> Either (VarF (v .\\ u) x) (VarF u x)
 multiTrialF = bimap VarF VarF . multiTrial . unVarF
 
 viewF

@@ -181,8 +181,9 @@ schemeString = label "string" . lexeme . fmap (Text.pack . catMaybes) $
 -- [0, 1, 0, 1]: #u8( 0 1 0 1 )
 -- [255]:        #u8( 255 )
 -- []:           #u8()
-schemeByteVector :: P [Word8]
-schemeByteVector = label "bytevector" . lexeme $ between (symbol "#u8(") (char ')') $ many byte
+schemeByteVector :: P (Vector Word8)
+schemeByteVector = label "bytevector" . fmap Vector.fromList . lexeme $
+    between (symbol "#u8(") (char ')') $ many byte
     where
         byte = label "byte" . lexeme $ do
             nStr <- some digitChar
@@ -192,7 +193,7 @@ schemeByteVector = label "bytevector" . lexeme $ between (symbol "#u8(") (char '
                else fail $ "byte " ++ show n ++ " is out of the range 0..255"
 
 
--- | Parses a float, syntax is inspired by R7RS
+-- | Parses a number, syntax is inspired by R7RS
 -- Binary: #b010101
 -- Octal:  #o777
 -- Hex:    #xdeadbeef
@@ -266,13 +267,10 @@ schemeDatum :: P Lit
 schemeDatum =
         try (LitBool <$> schemeBool)
     <|> try (LitNum <$> schemeNumber)
-    -- XXX: Currently parsing chars as symbols
-    <|> try (LitSym . Text.singleton <$> schemeChar)
-    -- XXX: Currently parsing strings as symbols
-    <|> try (LitSym <$> schemeString)
+    <|> try (LitChar <$> schemeChar)
+    <|> try (LitStr <$> schemeString)
     <|> try (LitSym <$> schemeIdent)
-    -- XXX: Currently parsing bytevectors as lists
-    <|> try (foldl LitPair LitEmpty . map (LitNum . fromIntegral) <$> schemeByteVector)
+    <|> try (LitByteVec <$> schemeByteVector)
     <|> try schemeList
     <|> schemeDotList
     <|> schemeVector
@@ -288,12 +286,11 @@ schemeDatum =
                 x <- schemeDatum
                 pure (xs, x)
             pure $ foldl LitPair x xs
-        -- XXX: Currently parsing vectors as lists
         schemeVector = do
             void $ symbol "#("
             xs <- many schemeDatum
             void $ symbol ")"
-            pure $ foldl LitPair LitEmpty xs
+            pure $ LitVector (Vector.fromList xs)
         schemeAbbrev = do
             prefix <- abbrevPrefix
             LitPair (LitSym prefix) <$> schemeDatum
@@ -342,13 +339,10 @@ schemeExpr = label "expression" $
         selfEvaluating =
                 try (LitBool <$> schemeBool)
             <|> try (LitNum <$> schemeNumber)
-            -- XXX: Currently parsing chars as symbols
-            <|> try (LitSym . Text.singleton <$> schemeChar)
-            -- XXX: Currently parsing strings as symbols
-            <|> try (LitSym <$> schemeString)
+            <|> try (LitChar <$> schemeChar)
+            <|> try (LitStr <$> schemeString)
             <|> try (LitSym <$> schemeIdent)
-            -- XXX: Currently parsing bytevectors as lists
-            <|> try (foldl LitPair LitEmpty . map (LitNum . fromIntegral) <$> schemeByteVector)
+            <|> try (LitByteVec <$> schemeByteVector)
 
 -- | Parses a scheme statement
 schemeStmt :: P Stmt

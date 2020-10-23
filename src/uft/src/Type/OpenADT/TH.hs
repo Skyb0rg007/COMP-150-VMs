@@ -28,7 +28,7 @@ openADT convert decs = do
     decs' <- decs
     foldMapM goDec decs'
     where
-        getInfo :: Dec -> (Dec, Name, [TyVarBndr], Name, [BangType])
+        getInfo :: Dec -> (Dec, Name, [TyVarBndr], Name, [Type])
         getInfo = \case
             DataD [] (unFresh -> name) tyVarBndrs Nothing [NormalC (unFresh -> conName) bangTypes] derivClauses
               | Just (tyVarBndrsInit, tyVarBndrsTail) <- unsnoc tyVarBndrs ->
@@ -41,7 +41,20 @@ openADT convert decs = do
                       , name
                       , tyVarBndrs'
                       , conName
-                      , bangTypes
+                      , map (\(_, t) -> t) bangTypes
+                      )
+            DataD [] (unFresh -> name) tyVarBndrs Nothing [RecC (unFresh -> conName) varBangTypes] derivClauses
+              | Just (tyVarBndrsInit, tyVarBndrsTail) <- unsnoc tyVarBndrs ->
+                  let tyVarBndrsLast' = case tyVarBndrsTail of
+                                          PlainTV x -> KindedTV x StarT
+                                          _ -> tyVarBndrsTail
+                      tyVarBndrs' = tyVarBndrsInit ++ [tyVarBndrsLast']
+                      derivFunctor = DerivClause (Just StockStrategy) [ConT ''Functor]
+                   in ( DataD [] name tyVarBndrs' Nothing [RecC conName varBangTypes] (derivFunctor : derivClauses)
+                      , name
+                      , tyVarBndrs'
+                      , conName
+                      , map (\(_, _, t) -> t) varBangTypes
                       )
             NewtypeD [] (unFresh -> name) tyVarBndrs Nothing (NormalC (unFresh -> conName) bangTypes) derivClauses
               | Just (tyVarBndrsInit, tyVarBndrsTail) <- unsnoc tyVarBndrs ->
@@ -54,12 +67,25 @@ openADT convert decs = do
                       , name
                       , tyVarBndrs'
                       , conName
-                      , bangTypes
+                      , map (\(_, t) -> t) bangTypes
+                      )
+            NewtypeD [] (unFresh -> name) tyVarBndrs Nothing (RecC (unFresh -> conName) varBangTypes) derivClauses
+              | Just (tyVarBndrsInit, tyVarBndrsTail) <- unsnoc tyVarBndrs ->
+                  let tyVarBndrsLast' = case tyVarBndrsTail of
+                                          PlainTV x -> KindedTV x StarT
+                                          _ -> tyVarBndrsTail
+                      tyVarBndrs' = tyVarBndrsInit ++ [tyVarBndrsLast']
+                      derivFunctor = DerivClause (Just StockStrategy) [ConT ''Functor]
+                   in ( NewtypeD [] name tyVarBndrs' Nothing (RecC conName varBangTypes) (derivFunctor : derivClauses)
+                      , name
+                      , tyVarBndrs'
+                      , conName
+                      , map (\(_, _, t) -> t) varBangTypes
                       )
             _ -> error "Expected a data or newtype declaration with one constructor"
         goDec :: Dec -> Q [Dec]
         goDec dec = do
-            let (dec', tyName, tyVarBndrs, conName, bangTypes) = getInfo dec
+            let (dec', tyName, tyVarBndrs, conName, conTypes) = getInfo dec
             when (last (nameBase tyName) /= 'F') $
                 error $ "Expected type name to end with 'F' - got \"" ++ nameBase tyName ++ "\""
             when (drop (length (nameBase conName) - 2) (nameBase conName) /= "F'") $
@@ -73,7 +99,7 @@ openADT convert decs = do
                              _ -> error "Empty patName"
                 rowLabelT :: Q Type
                 rowLabelT = litT (strTyLit rowLabel)
-            args :: [Name] <- replicateM (length bangTypes) (newName "a")
+            args :: [Name] <- replicateM (length conTypes) (newName "a")
             let bndrName :: TyVarBndr -> Name
                 bndrName (PlainTV n) = n
                 bndrName (KindedTV n _) = n
@@ -105,12 +131,12 @@ openADT convert decs = do
                 patTypeCtxF = [t| (OpenAlg $tvR $rowLabelT $appliedTyCon $tvV) |]
                 patTypeCtx  = [t| (OpenAlg $tvR $rowLabelT $appliedTyCon $adtR, $tvV ~ $adtR) |]
             let patRetTypeF = [t| VarF $tvR $tvV |]
-            let patTypeTypeF = foldr funApp patRetTypeF (map (pure . snd) bangTypes)
+            let patTypeTypeF = foldr funApp patRetTypeF (map pure conTypes)
             let patTypeType  = foldr (\x a -> do
                     x' <- x
                     v' <- tvV
                     if x' == v' then funApp adtR a else funApp x a
-                    ) adtR (map (pure . snd) bangTypes)
+                    ) adtR (map pure conTypes)
 
             patTypeF <- forallT patBndrsF ((: []) <$> patTypeCtxF) patTypeTypeF
             patType  <- forallT patBndrs  ((: []) <$> patTypeCtx)  patTypeType

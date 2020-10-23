@@ -6,9 +6,12 @@ module Uft.Scheme.Ast
     ( module Uft.Scheme.Ast
     ) where
 
+import           Data.Char                 (isPrint, ord)
+import           Data.Constraint           (withDict, type (:-))
 import           Data.Deriving
 import           Data.Functor.Classes
 import           Data.Functor.Foldable     (cata)
+import           Data.Row.Internal         (Unconstrained1)
 import           Data.Text                 (Text)
 import           Data.Text.Prettyprint.Doc
 import           Data.Vector               (Vector)
@@ -17,67 +20,33 @@ import           Data.Word                 (Word8)
 import           Text.Read                 (Read (readPrec))
 import           Type.OpenADT
 import           Type.OpenADT.TH
+import           Type.VarF
 import           Uft.Pretty
+import           Data.Kind (Type)
 import           Uft.Util
 
 -- * Literals
-
 openADT (drop 3) [d|
-    -- | Integer literal
+    -- | Integer literal: 12 #d123 3.14159 #b010101 #xdeadbeef
     newtype LitNumF a = LitNumF' Double
-    -- | String literal
+    -- | String literal: "foo" "bar baz"
     newtype LitStrF a = LitStrF' Text
-    -- | Symbol literal
+    -- | Symbol literal: foo |bar baz|
     newtype LitSymF a = LitSymF' Text
-    -- | Char literal
+    -- | Char literal: #\x #\space #\x64
     newtype LitCharF a = LitCharF' Char
-    -- | Boolean literal
+    -- | Boolean literal: #t #f #true #false
     newtype LitBoolF a = LitBoolF' Bool
-    -- | Empty list literal
+    -- | Empty list literal: ()
     data LitEmptyF a = LitEmptyF'
-    -- | Pair literal
+    -- | Pair literal: (a . b)
     data LitPairF a = LitPairF' !a !a
-    -- | Vector literal
+    -- | Vector literal: #(a b c)
     newtype LitVectorF a = LitVectorF' (Vector a)
-    -- | Bytevector literal
+    -- | Bytevector literal: #u8(1 2 3)
     newtype LitByteVecF a = LitByteVecF' (Vector Word8)
     |]
 foldMapM openADTDerive1 [''LitNumF, ''LitStrF, ''LitSymF, ''LitCharF, ''LitBoolF, ''LitEmptyF, ''LitPairF, ''LitVectorF, ''LitByteVecF]
-
-instance PrettyF LitNumF where
-    prettyF' (LitNumF' n) = styleNum (pretty n)
-instance PrettyF LitStrF where
-    prettyF' (LitStrF' s) = styleString (dquotes (pretty s))
-instance PrettyF LitSymF where
-    prettyF' (LitSymF' s) = styleSym (pretty s)
-instance PrettyF LitCharF where
-    prettyF' (LitCharF' c) = styleChar ("#\\" <> pretty c)
-instance PrettyF LitBoolF where
-    prettyF' (LitBoolF' b) = styleBool (if b then "#t" else "#f")
-instance PrettyF LitEmptyF where
-    prettyF' LitEmptyF' = "()"
-instance PrettyF LitPairF where
-    prettyF' (LitPairF' a b) = parens $ a <+> "." <+> b
-instance PrettyF LitVectorF where
-    prettyF' (LitVectorF' v) = "#(" <> hsep (Vector.toList v) <> ")"
-instance PrettyF LitByteVecF where
-    prettyF' (LitByteVecF' v) = "#u8(" <> hsep (map pretty (Vector.toList v)) <> ")"
-
-prettyLitList
-    :: forall r.
-       ( Forall (r .- "litPair") PrettyF
-       , Forall (r .- "litPair") Functor
-       , Forall r Functor )
-    => OpenADT r
-    -> Doc ASTStyle
-prettyLitList w = cata alg w False
-    where
-        -- The boolean is true if the literal is the tail of a pair
-        alg :: VarF r (Bool -> Doc ASTStyle) -> Bool -> Doc ASTStyle
-        alg w b =
-            case trialF w #litPair of
-              Left lit -> prettyF' $ fmap ($ False) lit
-              Right _ -> ""
 
 type LitRowF =
     ( "num"     .== LitNumF
@@ -93,8 +62,8 @@ type LitRowF =
 type LitF = VarF LitRowF
 type Lit = OpenADT LitRowF
 
-
 -- * Expressions
+
 data LetKind = Let | LetRec | LetStar
     deriving (Show, Eq, Ord)
 
@@ -125,13 +94,86 @@ type ExpRowF =
 type ExpF = VarF ExpRowF
 type Exp = OpenADT ExpRowF
 
+-- * Statements
+
+openADT (drop 4) [d|
+    data StmtValF a = StmtValF' !Text !Exp
+    data StmtDefineF a = StmtDefineF' !Text !(Vector Text) !Exp
+    newtype StmtExpF a = StmtExpF' Exp
+    data StmtCheckExpectF a = StmtCheckExpectF' !Exp !Exp
+    newtype StmtCheckAssertF a = StmtCheckAssertF' Exp
+    |]
+foldMapM openADTDerive1 [''StmtValF, ''StmtDefineF, ''StmtExpF, ''StmtCheckExpectF, ''StmtCheckAssertF]
+
+type StmtRowF =
+    ( "val"         .== StmtValF
+   .+ "define"      .== StmtDefineF
+   .+ "exp"         .== StmtExpF
+   .+ "checkExpect" .== StmtCheckExpectF
+   .+ "checkAssert" .== StmtCheckAssertF
+    )
+type StmtF = VarF StmtRowF
+type Stmt = OpenADT StmtRowF
+
+-- * A program is a list of statements
+type Prog = [Stmt]
+
+-- * Pretty-printing
+
+instance PrettyF LitNumF where
+    prettyF' (LitNumF' n) = styleNum (pretty n)
+instance PrettyF LitStrF where
+    prettyF' (LitStrF' s) = styleString (dquotes (pretty s))
+instance PrettyF LitSymF where
+    prettyF' (LitSymF' s) = styleSym (pretty s)
+instance PrettyF LitCharF where
+    prettyF' (LitCharF' c) 
+      | isPrint c = styleChar ("#\\" <> pretty c)
+      | otherwise = styleChar ("#\\x" <> pretty (ord c))
+instance PrettyF LitBoolF where
+    prettyF' (LitBoolF' b) = styleBool (if b then "#t" else "#f")
+instance PrettyF LitEmptyF where
+    prettyF' LitEmptyF' = "()"
+instance PrettyF LitPairF where
+    prettyF' (LitPairF' a b) = parens $ a <+> "." <+> b
+instance PrettyF LitVectorF where
+    prettyF' (LitVectorF' v) = "#(" <> hsep (Vector.toList v) <> ")"
+instance PrettyF LitByteVecF where
+    prettyF' (LitByteVecF' v) = "#u8(" <> hsep (map pretty (Vector.toList v)) <> ")"
+
+requiresQuoting
+    :: forall r x q.
+        ( q ~ ("str" .== LitStrF .+ "char" .== LitCharF .+ "num" .== LitNumF)
+        , Forall (ApRow r x .\\ ApRow q x) Unconstrained1
+        , (ApRow r x .\\ ApRow q x) ~ ApRow (r .\\ q) x
+        )
+    => VarF r x
+    -> Bool
+requiresQuoting adt =
+    case multiTrialF @q adt of
+      Left _  -> False
+      Right _ -> True
+
+-- | Print a literal, collapsing pairs into list syntax
+prettyLitList :: Lit -> Doc ASTStyle
+prettyLitList LitEmpty = "()"
+prettyLitList (LitPair a b) = go b (prettyF a :)
+    where
+        go :: Lit -> ([Doc ASTStyle] -> [Doc ASTStyle]) -> Doc ASTStyle
+        go LitEmpty f      = parens $ hsep $ f []
+        go (LitPair a b) f = go b (f . (prettyF a :))
+        go lit f           = parens $ hsep $ f [] ++ [".", prettyF lit]
+prettyLitList lit = prettyF lit
+
 instance Pretty LetKind where
     pretty Let     = "let"
     pretty LetRec  = "letrec"
     pretty LetStar = "let*"
 
 instance PrettyF ExpLitF where
-    prettyF' (ExpLitF' lit) = squote <> prettyF lit
+    prettyF' (ExpLitF' lit)
+      | requiresQuoting (unfix lit) = squote <> prettyLitList lit
+      | otherwise = prettyLitList lit
 instance PrettyF ExpVarF where
     prettyF' (ExpVarF' x) = pretty x
 instance PrettyF ExpSetF where
@@ -179,25 +221,6 @@ instance PrettyF ExpLambdaF where
                    ])
              (styleKw "lambda" <+> args' <+> hsep body)
 
-openADT (drop 4) [d|
-    data StmtValF a = StmtValF' !Text !Exp
-    data StmtDefineF a = StmtDefineF' !Text !(Vector Text) !Exp
-    newtype StmtExpF a = StmtExpF' Exp
-    data StmtCheckExpectF a = StmtCheckExpectF' !Exp !Exp
-    newtype StmtCheckAssertF a = StmtCheckAssertF' Exp
-    |]
-foldMapM openADTDerive1 [''StmtValF, ''StmtDefineF, ''StmtExpF, ''StmtCheckExpectF, ''StmtCheckAssertF]
-
-type StmtRowF =
-    ( "val"         .== StmtValF
-   .+ "define"      .== StmtDefineF
-   .+ "exp"         .== StmtExpF
-   .+ "checkExpect" .== StmtCheckExpectF
-   .+ "checkAssert" .== StmtCheckAssertF
-    )
-type StmtF = VarF StmtRowF
-type Stmt = OpenADT StmtRowF
-
 instance PrettyF StmtValF where
     prettyF' (StmtValF' x e) = parens $
         vsep [ styleKw "val" <+> pretty x, indent 2 $ prettyF e ]
@@ -213,6 +236,4 @@ instance PrettyF StmtCheckExpectF where
 instance PrettyF StmtCheckAssertF where
     prettyF' (StmtCheckAssertF' e) = parens $
         styleKw "check-assert" <+> prettyF e
-
-type Prog = [Stmt]
 
