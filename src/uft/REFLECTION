@@ -1,60 +1,83 @@
-1. Global and local names. You can create a term in which a single name appears as both a global variable and a local variable.
+1. In lab you wrote algebraic laws for Kleisli composition using the baby error monad. To claim this point, write algebraic laws for Kleisli composition using the full error monad.
 
-    (let ([x x]) x)
+    succeed >=> g === g
+    (f >=> g) x === ERROR str where f x == ERROR str
+    (f >=> g) x === ERROR str where f x == Ok y, g y == ERROR str
 
-2. K-normal form. You can write simple K-normal form by hand.
+2. To claim this point, define this parsing combinator:
 
-    let tmp = 1 in +(n, tmp)
+    val commaSep : 'a producer -> 'a list producer =
+      fn p =>
+        curry op:: <$> p <*> many (the "," >> p)
+        <|>
+        succeed []
 
-3. K-normal form embedding. You can, by hand, embed simple K-normal form into Scheme.
+You may include the definition in your REFLECTION file or in your Sunday night submission (in which case, please point to it).
 
-    (let ([tmp 1]) (+ n tmp))
+3. To claim this point, identify examples of two different syntactic forms of virtual object code, and compare those examples side by side with the corresponding forms of your assembly language. Explain why you believe that the assembly-language examples are more readable.
 
-4. Names in K-normal form. You can say which names in the source code show up as what types in K-normal form.
+    VO: + 1 2 3
+    VA: r1 := r2 + r3
 
-    'a -> formal param, local variable
-    vmop -> primitive function
-    literal -> none
+    VO: print 1
+    VA: print r1
 
-5. Software reuse. You can say how K-normal form could be used to implement other programming languages.
+    The Assembly code is much easier to understand since it specifically mentions
+    what is a register, and what are the inputs and what are the outputs.
 
-    Tcl:
-    KNormal form would be a poor target for implementing Tcl
-    In Tcl, you can have an expression such as [set $x 12], which would compute the
-    name of the variable at runtime. Therefore there is no way to distinguish local and global variable manipulation
+4. It’s good if the assembly language is easy to read and write, but it’s also good if the code inside the UFT is short. To claim this point, use your unparser as evidence to argue at least one of the following positions:
 
-6. Embedding, projection, and language design. You can justify the fact that K-normal form has fewer expressions but more literals than Scheme.
+    Both can be accomplished in the same design. For example, a function literal in object code may be written:
 
-    In a system that is targeting the SVM but does not necessarily want to be locked into translating Scheme, why is it a good idea to have K-normal form expressions be a subset of Scheme expressions?
+    .load function 1 2 3
+    + 1 2 3
+    - 1 2 3
+    % 1 2 3
 
-        Generating SVM code from a K-normal form expression is easier - less cases to handle
+    But in Assebly code may be:
+    r1 := function 2
+        r1 := r2 + r3
+        r1 := r2 - r3
+        r1 := r2 % r3
 
-    In a system that is targeting the SVM but does not necessarily want to be locked into translating Scheme, why is it a good idea to have K-normal form literals be a superset of Scheme values?
+    Since the assembly code is parsed via indentation, the programmer does not have to
+    worry about entering the number of lines the function is when writing it.
+    In addition, there are less words to write since redundant words such as the number
+    of lines is implicit, and thus does not need to be written
 
-        Programmers may want to generate literals that are not possible by Scheme, for example nil
-        However in a different language, ex. Lua, you would want to have nil be an otherwise usable literal
+5. To claim this point, make sure your Sunday night submission includes test file unparse.vs and that it passes the test described in step 17 above.
 
-7. Eta-expansion. You can eta-expand cdr by hand.
+    Done!
 
-    cdr -> (lambda (a) (cdr a))
+6. To claim this point, identify a choice point in your grammar (that is, an alternative between two syntactic forms), where making the choice requires looking at more than one token. If all your choices can be made by looking at a single token—that is, if your grammar is LL(1)—then explain what you did to make that so.
 
-8. Eta-expansion. You can say which of the K-normal form invariants is satisfied by the body of an eta-expansion.
+    The add and subtract forms:
 
-    Every argument has a name (the special case doesn't come up with eta-expansion)
+    r1 := r2 + r3
+    r1 := r2 - r3
 
-9. UFT driver. Your uft builds and understands what kn-kn is asking for.
+    Are implemented in my code to use backtracking, effectively using 4-token lookahead
+    However this can be done with only 1 token lookahead but would need to be written differently
 
-    I am not claiming this point
 
-10. Error monad. You can show where in your code you have exploited the error monad.
+7. To claim this point, you will show assembly syntax that your UFT successfully parses and unparses, using code you wrote yourself (or with a partner). You may use the parser you wrote in lab in step 8, or you may use another parser of your choice. Demonstrate that it works with your unparser by feeding an assembly language instruction to the UFT, parsing it, and unparsing it back to the original string, as in this example:
 
-    Basically everywhere. Take a look at Uft/Scheme/Disambiguate.hs
-    MonadError in Haskell ~~ error monad in SML
+> echo "r1 := r2 + r3" | uft vs-vs
+r1 := r2 + r3
 
-11. Testing. You can explain the results of your tests.
+    This line of code runs properly
 
-    The pipeline is not setup
+8. To claim this point,
 
-12. Notation. You can use Oxford brackets to write translation equations.
+Explain whether and how the embedding/projection concept applies to the abstract syntax and concrete syntax of assembly language.
 
-    𝒜 ⟦goto label⟧(k, ρ{ label → n }) = goto $(n - k - 1)
+    Yes - the object code is embedded within assembly
+
+Point to where in your embedding and/or projection are implemented.
+
+    The '@' form
+
+If projection is implemented, how projection failure is manifested.
+
+    This is not done
+

@@ -1,0 +1,128 @@
+name:                uft
+version:             0.1.0.0
+github:              "Skyb0rg007/uft"
+license:             BSD3
+author:              "Skye Soss"
+maintainer:          "skyler.soss@gmail.com"
+copyright:           "2019 Skye Soss"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/Skyb0rg007/uft#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- array
+- bimap
+- binary
+- bytestring
+- constraints
+- containers
+- deepseq
+- deriving-compat
+- dlist
+- generic-data
+- hashable
+- lens
+- megaparsec
+- monad-control
+- mtl
+- ordered-containers
+- prettyprinter
+- prettyprinter-ansi-terminal
+- recursion-schemes
+- row-types
+- singletons
+- srcloc
+- string-conversions
+- template-haskell
+- text
+- transformers
+- transformers-base
+- unordered-containers
+- vector
+- bifunctors
+
+# - souffle-haskell
+
+ghc-options:
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wpartial-fields
+- -Wredundant-constraints
+
+default-extensions: 
+- BangPatterns
+- ConstraintKinds
+- DataKinds
+- DefaultSignatures
+- DeriveDataTypeable
+- DeriveFoldable
+- DeriveFunctor
+- DeriveGeneric
+- DeriveTraversable
+- DerivingStrategies
+- DerivingVia
+- EmptyCase
+- ExistentialQuantification
+- FlexibleContexts
+- FlexibleInstances
+- FunctionalDependencies
+- GADTs
+- InstanceSigs
+- KindSignatures
+- LambdaCase
+- NamedFieldPuns
+- OverloadedStrings
+- PatternSynonyms
+- PolyKinds
+- RankNTypes
+- RecordWildCards
+- ScopedTypeVariables
+- StandaloneDeriving
+- TupleSections
+- TypeApplications
+- TypeFamilies
+- TypeFamilyDependencies
+- TypeOperators
+- ViewPatterns
+
+library:
+  source-dirs: src
+  build-tools:
+  - alex
+  - happy
+
+executables:
+  uft-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - uft
+
+tests:
+  uft-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - uft
+    - hspec
+    - QuickCheck

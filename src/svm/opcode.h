@@ -28,6 +28,8 @@ typedef enum opcode {
     Call,
     Return,
     Tailcall,
+    Error,
+    TestEq,
     Unimp,       // stand-in for opcodes not yet implemented
                  // used to query number of opcodes, so must be last
 } Opcode;

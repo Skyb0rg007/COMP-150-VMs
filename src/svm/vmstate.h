@@ -13,21 +13,29 @@
 #include "value.h"
 #include "vtable.h"
 #include "utils/vector.h"
+#include "vmstack.h"
+#include "vmerror.h"
 
 /* Number of VM registers */
-#define NUM_REGISTERS 200
+#define NUM_REGISTERS 500
+/* Number of activation records */
+#define NUM_ACTIVATIONS 1000
 /* Hint for initial size of the globals table */
 #define HINT_NUM_GLOBALS 20
 
 typedef struct VMState *VMState;
 
 struct VMState {
-    /* VM registers */
-    Value registers[NUM_REGISTERS];
     /* Global variables */
     VTable_T globals;
     /* The literal pool */
     vector(Value) literals;
+    int num_activations;
+    /* VM registers */
+    Value registers[NUM_REGISTERS];
+    /* Activation records */
+    struct Activation activations[NUM_ACTIVATIONS];
+    int window;
 };
 
 VMState newstate(void);       // allocate and initialize (to empty)
@@ -45,15 +53,19 @@ static inline Value vmstate_get_lit(VMState vm, uint16_t index)
     return vector_at(&vm->literals, index);
 }
 
-static inline Value vmstate_get_reg(VMState vm, uint8_t index)
+static inline Value vmstate_get_reg(VMState vm, int index)
 {
-    assert(index < NUM_REGISTERS);
+    index += vm->window;
+    if (index >= NUM_REGISTERS)
+        runerror(vm, "Window broken!");
     return vm->registers[index];
 }
 
-static inline void vmstate_set_reg(VMState vm, uint8_t index, Value x)
+static inline void vmstate_set_reg(VMState vm, int index, Value x)
 {
-    assert(index < NUM_REGISTERS);
+    index += vm->window;
+    if (index >= NUM_REGISTERS)
+        runerror(vm, "Window broken!");
     vm->registers[index] = x;
 }
 
