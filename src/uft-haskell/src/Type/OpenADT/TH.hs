@@ -1,83 +1,65 @@
 
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Type.OpenADT.TH
-    ( openADT
-    , openADTDerive1
-    , openADTDerive2
+    ( deriveOpenADT
     ) where
 
 import           Control.Monad
-import           Data.Char                           (toLower)
-import           Data.Foldable                       (foldl')
-import           Control.Monad.IO.Class              (liftIO)
-import           Data.Deriving
-import           Data.Deriving.Internal              (unsnoc)
-import           Data.Functor.Classes
-import           Data.List                           (stripPrefix)
-import           Data.Maybe                          (fromMaybe)
+import           Data.Char           (toLower)
+import           Data.Foldable       (foldl')
 import           Language.Haskell.TH
-import           Language.Haskell.TH.Syntax
-import           Text.Read                           (Read (..), readListPrecDefault)
 import           Type.OpenADT
-import           Type.VarF
-import           Uft.Util                            (foldMapM)
+import           Uft.Util            (unsnoc)
 
-openADT :: (String -> String) -> Q [Dec] -> Q [Dec]
-openADT convert decs = do
-    decs' <- decs
-    foldMapM goDec decs'
+deriveOpenADT :: (String -> String) -> Name -> Q [Dec]
+deriveOpenADT convert name = do
+    TyConI dec <- reify name
+    goDec dec
     where
-        getInfo :: Dec -> (Dec, Name, [TyVarBndr], Name, [Type])
+        getInfo :: Dec -> (Name, [TyVarBndr], Name, [Type])
         getInfo = \case
-            DataD [] (unFresh -> name) tyVarBndrs Nothing [NormalC (unFresh -> conName) bangTypes] derivClauses
+            DataD [] nm tyVarBndrs Nothing [NormalC (unFresh -> conName) bangTypes] _
               | Just (tyVarBndrsInit, tyVarBndrsTail) <- unsnoc tyVarBndrs ->
                   let tyVarBndrsLast' = case tyVarBndrsTail of
                                           PlainTV x -> KindedTV x StarT
                                           _ -> tyVarBndrsTail
                       tyVarBndrs' = tyVarBndrsInit ++ [tyVarBndrsLast']
-                      derivFunctor = DerivClause (Just StockStrategy) [ConT ''Functor]
-                   in ( DataD [] name tyVarBndrs' Nothing [NormalC conName bangTypes] (derivFunctor : derivClauses)
-                      , name
+                   in ( nm
                       , tyVarBndrs'
                       , conName
                       , map (\(_, t) -> t) bangTypes
                       )
-            DataD [] (unFresh -> name) tyVarBndrs Nothing [RecC (unFresh -> conName) varBangTypes] derivClauses
+            DataD [] nm tyVarBndrs Nothing [RecC (unFresh -> conName) varBangTypes] _
               | Just (tyVarBndrsInit, tyVarBndrsTail) <- unsnoc tyVarBndrs ->
                   let tyVarBndrsLast' = case tyVarBndrsTail of
                                           PlainTV x -> KindedTV x StarT
                                           _ -> tyVarBndrsTail
                       tyVarBndrs' = tyVarBndrsInit ++ [tyVarBndrsLast']
-                      derivFunctor = DerivClause (Just StockStrategy) [ConT ''Functor]
-                   in ( DataD [] name tyVarBndrs' Nothing [RecC conName varBangTypes] (derivFunctor : derivClauses)
-                      , name
+                   in ( nm
                       , tyVarBndrs'
                       , conName
                       , map (\(_, _, t) -> t) varBangTypes
                       )
-            NewtypeD [] (unFresh -> name) tyVarBndrs Nothing (NormalC (unFresh -> conName) bangTypes) derivClauses
+            NewtypeD [] nm tyVarBndrs Nothing (NormalC (unFresh -> conName) bangTypes) _
               | Just (tyVarBndrsInit, tyVarBndrsTail) <- unsnoc tyVarBndrs ->
                   let tyVarBndrsLast' = case tyVarBndrsTail of
                                           PlainTV x -> KindedTV x StarT
                                           _ -> tyVarBndrsTail
                       tyVarBndrs' = tyVarBndrsInit ++ [tyVarBndrsLast']
-                      derivFunctor = DerivClause (Just StockStrategy) [ConT ''Functor]
-                   in ( NewtypeD [] name tyVarBndrs' Nothing (NormalC conName bangTypes) (derivFunctor : derivClauses)
-                      , name
+                   in ( nm
                       , tyVarBndrs'
                       , conName
                       , map (\(_, t) -> t) bangTypes
                       )
-            NewtypeD [] (unFresh -> name) tyVarBndrs Nothing (RecC (unFresh -> conName) varBangTypes) derivClauses
+            NewtypeD [] nm tyVarBndrs Nothing (RecC (unFresh -> conName) varBangTypes) _
               | Just (tyVarBndrsInit, tyVarBndrsTail) <- unsnoc tyVarBndrs ->
                   let tyVarBndrsLast' = case tyVarBndrsTail of
                                           PlainTV x -> KindedTV x StarT
                                           _ -> tyVarBndrsTail
                       tyVarBndrs' = tyVarBndrsInit ++ [tyVarBndrsLast']
-                      derivFunctor = DerivClause (Just StockStrategy) [ConT ''Functor]
-                   in ( NewtypeD [] name tyVarBndrs' Nothing (RecC conName varBangTypes) (derivFunctor : derivClauses)
-                      , name
+                   in ( nm
                       , tyVarBndrs'
                       , conName
                       , map (\(_, _, t) -> t) varBangTypes
@@ -85,7 +67,7 @@ openADT convert decs = do
             _ -> error "Expected a data or newtype declaration with one constructor"
         goDec :: Dec -> Q [Dec]
         goDec dec = do
-            let (dec', tyName, tyVarBndrs, conName, conTypes) = getInfo dec
+            let (tyName, tyVarBndrs, conName, conTypes) = getInfo dec
             when (last (nameBase tyName) /= 'F') $
                 error $ "Expected type name to end with 'F' - got \"" ++ nameBase tyName ++ "\""
             when (drop (length (nameBase conName) - 2) (nameBase conName) /= "F'") $
@@ -148,8 +130,7 @@ openADT convert decs = do
 
             fixedPatF <- [p| Fix $appliedPatF |]
 
-            pure [ dec'
-                 , PatSynSigD patFName patTypeF
+            pure [ PatSynSigD patFName patTypeF
                  , PatSynD patFName
                         (PrefixPatSyn args)
                         (ExplBidir [Clause argsP (NormalB patClause) []])
@@ -160,30 +141,6 @@ openADT convert decs = do
                  
 
 unFresh :: Name -> Name
-unFresh (Name (OccName n) _) = mkName n
-
-openADTDerive1 :: Name -> Q [Dec]
-openADTDerive1 name =
-    foldMapM ($ name)
-        [ deriveShow1
-        , deriveEq1
-        , deriveOrd1
-        , deriveShow
-        , deriveEq
-        , deriveOrd
-        ]
-
-openADTDerive2 :: Name -> Q [Dec]
-openADTDerive2 name =
-    foldMapM ($ name)
-        [ deriveShow2
-        , deriveEq2
-        , deriveOrd2
-        , deriveShow1
-        , deriveEq1
-        , deriveOrd1
-        , deriveShow
-        , deriveEq
-        , deriveOrd
-        ]
+unFresh = id
+-- unFresh (Name (OccName n) _) = mkName n
 

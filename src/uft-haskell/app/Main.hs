@@ -1,23 +1,37 @@
 
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Main where
 
-import           Control.Lens
+-- import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Except
+import           Data.Kind
 import           Data.Loc
-import           Data.String.Conversions         (convertString)
-import           Data.Text                       (Text)
-import qualified Data.Text                       as Text
-import qualified Data.Text.IO                    as Text.IO
+import           Data.Proxy                   (Proxy (..))
+import           Data.Singletons.Prelude.List
+import           Data.String.Conversions      (convertString)
+import           Data.Text                    (Text)
+import qualified Data.Text                    as Text
+import qualified Data.Text.IO                 as Text.IO
 import           Data.Text.Prettyprint.Doc
-import           System.Environment              (getArgs)
+import           GHC.TypeLits                 (Symbol)
+import           System.Environment           (getArgs)
 import           System.Exit
+import qualified Uft.Scheme.Ast               as Scheme
+import           Uft.Scheme.Disambiguate      ()
+import           Uft.Scheme.Parse             ()
+import           Uft.Transform
+import qualified Uft.UnambiguousScheme.Ast    as Unamb
 
 main = pure ()
+
+fileToScheme :: (FilePath, Text) -> Either Text Scheme.Prog
+fileToScheme = transform @"parseScheme"
+
+fileToUnamb :: (FilePath, Text) -> Either Text Unamb.Prog
+fileToUnamb = fileToScheme >=> transform @"disambiguate"
 
 {- import qualified Uft.Asm.Ast                     as Asm
 import qualified Uft.Asm.LabelElim               as Asm

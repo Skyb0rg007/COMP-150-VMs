@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wall #-}
 {-
    Module:      Uft.Util
    Description: Miscellaneous utilities used throughout Uft code
@@ -18,20 +17,15 @@ module Uft.Util
     , tshow
     -- * Miscellaneous
     , foldMapM
-    , derive
-    , unsnoc
-    , hashSetFromFoldable
     ) where
 
 import           Data.Foldable                         (foldlM)
-import           Data.Hashable                         (Hashable)
-import           Data.HashSet                          (HashSet)
-import qualified Data.HashSet                          as HashSet
 import           Data.Text                             (Text)
 import qualified Data.Text                             as Text
 import qualified Data.Text.Lazy                        as Lazy (Text)
-import           Data.Text.Prettyprint.Doc             (Pretty (pretty))
+import qualified Data.Text.Lazy                        as Lazy.Text
 import qualified Data.Text.Prettyprint.Doc             as Pretty
+import           Data.Text.Prettyprint.Doc             (Pretty (pretty))
 import qualified Data.Text.Prettyprint.Doc.Render.Text as Pretty.Text
 
 -- | Render a 'Pretty' value into 'Text'
@@ -55,22 +49,5 @@ foldMapM :: (Monad m, Monoid w, Foldable t)
 foldMapM f = foldlM go mempty
     where go acc a = f a >>= \w -> pure $! acc <> w
 
--- | Helper for deriving multiple classes on multiple types
--- derive [deriveEq1, deriveOrd1] [''Ty1, ''Ty2]
-derive :: Applicative f => [a -> f [b]] -> [a] -> f [b]
-derive ders names = concat <$> sequenceA [der name | der <- ders, name <- names]
 
--- | Uncons, but in reverse
-unsnoc :: [a] -> Maybe ([a], a)
-unsnoc [] = Nothing
-unsnoc (x:xs) =
-    case unsnoc xs of
-      Nothing -> Just ([], x)
-      Just (a, b) -> Just (x:a, b)
-
-hashSetFromFoldable
-    :: (Hashable a, Eq a, Foldable f)
-    => f a
-    -> HashSet a
-hashSetFromFoldable = foldr HashSet.insert HashSet.empty
 

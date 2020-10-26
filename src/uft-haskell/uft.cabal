@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 90aa41790b1941ff930ba85db25f0974fa430b60d1ec46e20147da303d9348cb
+-- hash: 60aac69375c539b13fe92868e2a97a759d5d64081fba67ccd654d49b6d1c4270
 
 name:           uft
 version:        0.1.0.0
@@ -30,17 +30,20 @@ library
       Type.OpenADT
       Type.OpenADT.TH
       Type.VarF
-      Uft.Located
+      Uft.AstNodes
       Uft.Pretty
       Uft.Primitives
       Uft.Scheme.Ast
+      Uft.Scheme.Disambiguate
       Uft.Scheme.Parse
+      Uft.Transform
+      Uft.UnambiguousScheme.Ast
       Uft.Util
   other-modules:
       Paths_uft
   hs-source-dirs:
       src
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns DerivingVia
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
   build-tools:
       alex
@@ -48,6 +51,7 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , bifunctors
     , bimap
     , binary
     , bytestring
@@ -84,11 +88,12 @@ executable uft-exe
       Paths_uft
   hs-source-dirs:
       app
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns DerivingVia
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array
     , base >=4.7 && <5
+    , bifunctors
     , bimap
     , binary
     , bytestring
@@ -131,12 +136,13 @@ test-suite uft-test
       Paths_uft
   hs-source-dirs:
       test
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns DerivingVia
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
     , array
     , base >=4.7 && <5
+    , bifunctors
     , bimap
     , binary
     , bytestring

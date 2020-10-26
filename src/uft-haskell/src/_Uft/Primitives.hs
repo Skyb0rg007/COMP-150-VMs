@@ -1,18 +1,7 @@
+
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE UndecidableInstances      #-}
-{-# OPTIONS_GHC -Wincomplete-patterns #-}
-{-
-   Module:      Uft.Primitives
-   Description: Routines for working with SVM primitives
-   Copyright:   Skye Soss 2020
-   License:     MIT
-   Maintainer:  skyler.soss@gmail.com
-   Stability:   experimental
-   Portability: ghc-8.8.4
-
-   This module uses the singletons pattern to create depdendently typed primitives
--}
 
 module Uft.Primitives
     ( PrimArgKind (..)
@@ -25,18 +14,20 @@ module Uft.Primitives
     , PrimVec (..)
     , PrimRet (..)
     , SomePrim (..)
-    , primCons
     ) where
 
 import           Data.Bifunctor       (Bifunctor (..))
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
+import           Data.Functor         ((<&>))
 import           Data.Functor.Classes
 import           Data.Kind            (Type)
 import           Data.Singletons
 import           Data.Singletons.Decide
 import           Data.Singletons.TH
 import           Data.Text            (Text)
+import qualified Data.Text            as Text
+import           Type.OpenADT.TH
 
 singletons [d|
     -- | DataKind representing the primitive argument kind
@@ -79,23 +70,22 @@ parsePrimitive = flip HashMap.lookup primMap
     where
         primMap :: HashMap Text SomePrimitive
         primMap = HashMap.fromList
-            [ ("+",           SomePrimitive (Primitive @PBinary @PRet   "+"))
-            , ("-",           SomePrimitive (Primitive @PBinary @PRet   "-"))
-            , ("*",           SomePrimitive (Primitive @PBinary @PRet   "*"))
-            , ("/",           SomePrimitive (Primitive @PBinary @PRet   "/"))
-            , ("//",          SomePrimitive (Primitive @PBinary @PRet   "//"))
-            , ("abs",         SomePrimitive (Primitive @PUnary  @PRet   "abs"))
-            , ("check",       SomePrimitive (Primitive @PBinLit @PNoRet "check"))
-            , ("copyreg",     SomePrimitive (Primitive @PUnary  @PRet   "copyreg"))
-            , ("expect",      SomePrimitive (Primitive @PBinLit @PNoRet "expect"))
-            , ("getglobal",   SomePrimitive (Primitive @PUnLit  @PRet   "getglobal"))
-            , ("hash",        SomePrimitive (Primitive @PUnary  @PRet   "hash"))
-            , ("loadliteral", SomePrimitive (Primitive @PUnLit  @PRet   "loadliteral"))
-            , ("println",     SomePrimitive (Primitive @PUnary  @PNoRet "println"))
-            , ("print",       SomePrimitive (Primitive @PUnary  @PNoRet "print"))
-            , ("printu",      SomePrimitive (Primitive @PUnary  @PNoRet "printu"))
-            , ("setglobal",   SomePrimitive (Primitive @PBinLit @PNoRet "setglobal"))
-            , ("cons",        SomePrimitive (Primitive @PBinary @PRet   "cons"))
+            [ ("+",           SomePrimitive (Primitive @PUnary @PRet   "+"))
+            , ("-",           SomePrimitive (Primitive @PUnary @PRet   "-"))
+            , ("*",           SomePrimitive (Primitive @PUnary @PRet   "*"))
+            , ("/",           SomePrimitive (Primitive @PUnary @PRet   "/"))
+            , ("//",          SomePrimitive (Primitive @PUnary @PRet   "//"))
+            , ("abs",         SomePrimitive (Primitive @PUnary @PRet   "abs"))
+            , ("check",       SomePrimitive (Primitive @PUnary @PNoRet "check"))
+            , ("copyreg",     SomePrimitive (Primitive @PUnary @PRet   "copyreg"))
+            , ("expect",      SomePrimitive (Primitive @PUnary @PNoRet "expect"))
+            , ("getglobal",   SomePrimitive (Primitive @PUnary @PRet   "getglobal"))
+            , ("hash",        SomePrimitive (Primitive @PUnary @PRet   "hash"))
+            , ("loadliteral", SomePrimitive (Primitive @PUnary @PRet   "loadliteral"))
+            , ("println",     SomePrimitive (Primitive @PUnary @PNoRet "println"))
+            , ("print",       SomePrimitive (Primitive @PUnary @PNoRet "print"))
+            , ("printu",      SomePrimitive (Primitive @PUnary @PNoRet "printu"))
+            , ("setglobal",   SomePrimitive (Primitive @PUnary @PNoRet "setglobal"))
             ]
 
 -- | Dependent vector that holds the arguments to a given primitive
@@ -110,7 +100,6 @@ instance SingI a => Eq1 (PrimVec a) where
           SPNullary -> \PVNullary PVNullary -> True
           SPUnary   -> \(PVUnary x) (PVUnary x') -> x `eq` x'
           SPBinary  -> \(PVBinary x y) (PVBinary x' y') -> x `eq` x' && y `eq` y'
-          -- SPBinLit  -> \(SPBinLit 
 instance SingI a => Ord1 (PrimVec a) where
     liftCompare cmp =
         case sing @a of
@@ -118,7 +107,7 @@ instance SingI a => Ord1 (PrimVec a) where
           SPUnary   -> \(PVUnary x) (PVUnary x') -> x `cmp` x'
           SPBinary  -> \(PVBinary x y) (PVBinary x' y') -> x `cmp` x' <> y `cmp` y'
 instance SingI a => Show1 (PrimVec a) where
-    liftShowsPrec sp _ d =
+    liftShowsPrec sp sl d =
         case sing @a of
           SPNullary -> \PVNullary -> showString "PVNullary"
           SPUnary   -> \(PVUnary x) -> showParen (d > 10) $
@@ -154,7 +143,7 @@ instance SingI a => Ord1 (PrimRet a) where
           SPRet -> \(PRSome x) (PRSome x') -> x `cmp` x'
           SPNoRet -> \PRNone PRNone -> EQ
 instance SingI a => Show1 (PrimRet a) where
-    liftShowsPrec sp _ d =
+    liftShowsPrec sp sl d =
         case sing @a of
           SPRet -> \(PRSome x) -> showParen (d > 10) $
               showString "PRSome " . sp 11 x
@@ -217,8 +206,4 @@ instance (Ord a, Ord b) => Ord (SomePrim a b) where
     compare = compare1
 instance (Show a, Show b) => Show (SomePrim a b) where
     showsPrec = showsPrec1
-
-
-primCons :: Primitive PBinary PRet
-primCons = Primitive "cons"
 

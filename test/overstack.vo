@@ -1,0 +1,13 @@
+.load module 3
+.load 1 function 1 9
+loadliteral 2 1
+- 1 1 2
+loadliteral 2 0
+= 2 1 2
+if 2
+goto 1
+call 2 0 1
+return 2
+halt
+loadliteral 2 9999
+call 1 1 2

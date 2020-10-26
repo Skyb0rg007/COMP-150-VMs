@@ -49,6 +49,7 @@ dependencies:
 - transformers-base
 - unordered-containers
 - vector
+- bifunctors
 
 # - souffle-haskell
 
@@ -71,6 +72,8 @@ default-extensions:
 - DeriveGeneric
 - DeriveTraversable
 - DerivingStrategies
+- DerivingVia
+- EmptyCase
 - ExistentialQuantification
 - FlexibleContexts
 - FlexibleInstances
@@ -93,7 +96,6 @@ default-extensions:
 - TypeFamilyDependencies
 - TypeOperators
 - ViewPatterns
-- DerivingVia
 
 library:
   source-dirs: src

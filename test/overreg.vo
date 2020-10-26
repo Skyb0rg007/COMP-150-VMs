@@ -1,0 +1,4 @@
+.load module 2
+.load 255 function 0 1
+call 255 255 255
+call 255 255 255

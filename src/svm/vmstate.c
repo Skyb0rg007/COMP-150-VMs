@@ -29,7 +29,9 @@ VMState newstate(void) {
         vm->registers[i] = nilValue;
     }
     vm->globals = VTable_new(HINT_NUM_GLOBALS);
+    vm->window = 0;
     vector_init(&vm->literals);
+    vm->num_activations = 0;
     return vm;
 }
 

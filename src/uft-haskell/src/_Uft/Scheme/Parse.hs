@@ -1,15 +1,10 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-
-   Module:      Uft.Scheme.Parse
-   Description: Transform instance for parsing the Scheme AST
-   Copyright:   Skye Soss 2020
-   License:     MIT
-   Maintainer:  skyler.soss@gmail.com
-   Stability:   experimental
-   Portability: ghc-8.8.4
--}
 
-module Uft.Scheme.Parse () where
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+module Uft.Scheme.Parse
+    ( parseScheme
+    ) where
 
 import           Control.Monad              (void)
 import           Control.Monad.Except
@@ -36,9 +31,7 @@ import           Text.Megaparsec.Util
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import           Uft.AstNodes
 import           Uft.Scheme.Ast
-import           Uft.Transform
 
 -- | Parser type
 -- No custom error type -> Void
@@ -284,10 +277,10 @@ schemeDatum =
     <|> schemeAbbrev
     where
         schemeList = do
-            xs <- betweenParens $ many schemeDatum
+            xs <- betweenSexp $ many schemeDatum
             pure $ foldl LitPair LitEmpty xs
         schemeDotList = do
-            (xs, x) <- betweenParens $ do
+            (xs, x) <- betweenSexp $ do
                 xs <- many schemeDatum
                 void $ symbol "."
                 x <- schemeDatum
@@ -307,9 +300,9 @@ schemeDatum =
             <|> "unquote-splicing" <$ try (string ",@")
             <|> "unquote"          <$ char ','
 
-betweenParens :: P a -> P a
-betweenParens p = (symbol "(" *> p <* symbol ")")
-              <|> (symbol "[" *> p <* symbol "]")
+betweenSexp :: P a -> P a
+betweenSexp p = (symbol "(" *> p <* symbol ")")
+            <|> (symbol "[" *> p <* symbol "]")
 
 -- | Parses a scheme expression
 schemeExpr :: P Exp
@@ -317,28 +310,26 @@ schemeExpr = label "expression" $
         ExpVar <$> schemeIdent
     <|> ExpLit <$> selfEvaluating
     <|> (char '\'' >> ExpLit <$> schemeDatum)
-    <|> betweenParens (choice
+    <|> betweenSexp (choice
         [ label "quote" $
             symbol "quote" >> ExpLit <$> schemeDatum
         , label "lambda" $ do
             void $ symbol "lambda"
-            args <- betweenParens $ many schemeIdent
-            ExpLambda (Vector.fromList args) <$> fmap wrapBegin (some schemeExpr)
+            args <- betweenSexp $ many schemeIdent
+            ExpLambda (Vector.fromList args) <$> fmap Vector.fromList (some schemeExpr)
         , label "if" $
-            symbol "if" >> ExpIf <$> schemeExpr <*> schemeExpr <*> fmap wrapBegin' (optional schemeExpr)
+            symbol "if" >> ExpIf <$> schemeExpr <*> schemeExpr <*> optional schemeExpr
         , label "set" $
             symbol "set" >> ExpSet <$> schemeIdent <*> schemeExpr
         , label "begin" $
             symbol "begin" >> ExpBegin . Vector.fromList <$> many schemeExpr
-        , label "while" $
-            symbol "while" >> ExpWhile <$> schemeExpr <*> fmap wrapBegin (many schemeExpr)
         , label "let" $ do
-            kind <- LKLetRec <$ symbol "letrec" <|> LKLetStar <$ symbol "let*" <|> LKLet <$ symbol "let"
-            let parseBind = betweenParens $
+            kind <- LetRec <$ symbol "letrec" <|> LetStar <$ symbol "let*" <|> Let <$ symbol "let"
+            let parseBind = betweenSexp $
                     (,) <$> schemeIdent <*> schemeExpr
-            binds <- betweenParens $ many parseBind
+            binds <- betweenSexp $ many parseBind
             body <- some schemeExpr
-            pure $ ExpLet kind (Vector.fromList binds) (wrapBegin body)
+            pure $ ExpLet kind (Vector.fromList binds) (Vector.fromList body)
         , choice [symbol "check-expect", symbol "check-assert", symbol "val"]
             >>= \name -> fail $ Text.unpack name ++ " is an invalid expression"
         , label "function call" $
@@ -350,28 +341,16 @@ schemeExpr = label "expression" $
             <|> try (LitNum <$> schemeNumber)
             <|> try (LitChar <$> schemeChar)
             <|> try (LitStr <$> schemeString)
+            <|> try (LitSym <$> schemeIdent)
             <|> try (LitByteVec <$> schemeByteVector)
-        wrapBegin :: [Exp] -> Exp
-        wrapBegin [x] = x
-        wrapBegin xs = ExpBegin (Vector.fromList xs)
-        wrapBegin' :: Maybe Exp -> Exp
-        wrapBegin' = fromMaybe (ExpBegin Vector.empty)
-
 
 -- | Parses a scheme statement
 schemeStmt :: P Stmt
 schemeStmt = label "statement" $
-        try (betweenParens $ choice
+        try (betweenSexp $ choice
             [ symbol "val" >> StmtVal <$> schemeIdent <*> schemeExpr
-            , do
-                void $ symbol "check-expect"
-                (t1, e1) <- match schemeExpr
-                (t2, e2) <- match schemeExpr
-                pure $ StmtCheckExpect e1 t1 e2 t2
-            , do
-                void $ symbol "check-assert"
-                (t, e) <- match schemeExpr
-                pure $ StmtCheckAssert e t
+            , symbol "check-expect" >> StmtCheckExpect <$> schemeExpr <*> schemeExpr
+            , symbol "check-assert" >> StmtCheckAssert <$> schemeExpr
             ])
     <|> StmtExp <$> schemeExpr
 
@@ -382,11 +361,5 @@ schemeProg = label "program" $ intertokenSpace >> many schemeStmt
 -- | Parses a scheme program, or produces a prettied error message
 parseScheme :: MonadError Text m => FilePath -> Text -> m Prog
 parseScheme file input =
-    liftEither $ first (Text.pack . errorBundlePretty) $
-        parse schemeProg file input
-
-instance Transform "parseScheme" where
-    type From "parseScheme" = (FilePath, Text)
-    type To "parseScheme" = Prog
-    transform' _ = uncurry parseScheme
+    liftEither $ first (Text.pack . errorBundlePretty) $ parse schemeProg file input
 
