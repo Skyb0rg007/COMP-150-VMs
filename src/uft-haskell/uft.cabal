@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 37137aa3086ac986c92c2ff50143e2317814bf5cb96606a1f87f6e2167cb5b4e
+-- hash: d17566ba395d24f6ab30f642f032ca7a3d48e443944ebbf5e8fb9db1cfba3863
 
 name:           uft
 version:        0.1.0.0
@@ -26,19 +26,8 @@ source-repository head
 
 library
   exposed-modules:
-      Text.Megaparsec.Util
       Type.OpenADT
-      Type.OpenADT.TH
-      Type.VarF
-      Uft.AstNodes
-      Uft.Nanopass
-      Uft.Pretty
-      Uft.Primitives
       Uft.Scheme.Ast
-      Uft.Scheme.Parse
-      Uft.Transform
-      Uft.UnambiguousScheme.Ast
-      Uft.Util
   other-modules:
       Paths_uft
   hs-source-dirs:
@@ -60,6 +49,7 @@ library
     , deepseq
     , deriving-compat
     , dlist
+    , fastsum
     , generic-data
     , hashable
     , lens
@@ -70,7 +60,6 @@ library
     , prettyprinter
     , prettyprinter-ansi-terminal
     , recursion-schemes
-    , row-types
     , singletons
     , srcloc
     , string-conversions
@@ -102,6 +91,7 @@ executable uft-exe
     , deepseq
     , deriving-compat
     , dlist
+    , fastsum
     , generic-data
     , hashable
     , lens
@@ -112,7 +102,6 @@ executable uft-exe
     , prettyprinter
     , prettyprinter-ansi-terminal
     , recursion-schemes
-    , row-types
     , singletons
     , srcloc
     , string-conversions
@@ -151,6 +140,7 @@ test-suite uft-test
     , deepseq
     , deriving-compat
     , dlist
+    , fastsum
     , generic-data
     , hashable
     , hspec
@@ -162,7 +152,6 @@ test-suite uft-test
     , prettyprinter
     , prettyprinter-ansi-terminal
     , recursion-schemes
-    , row-types
     , singletons
     , srcloc
     , string-conversions

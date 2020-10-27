@@ -1,17 +1,12 @@
 
 module Type.OpenADT
     ( OpenADT
-    , Fix (..)
-    , unfix
-    , module Type.VarF
-    , module Data.Row
+    , module Data.Sum
+    , module Data.Functor.Foldable
     ) where
 
-import           Data.Functor.Foldable (Fix (..), unfix)
-import           Data.Row
-import           Type.VarF             (Label (..), OpenAlg, VarF (..), caseonF,
-                                        diversifyF, impossibleF, multiTrialF,
-                                        trialF, viewF)
+import           Data.Sum
+import           Data.Functor.Foldable (Fix (..), unfix, cata)
 
-type OpenADT r = Fix (VarF r)
+type OpenADT r = Fix (Sum r)
 
