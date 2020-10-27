@@ -8,31 +8,38 @@
 #ifndef OPCODE_INCLUDED
 #define OPCODE_INCLUDED
 
-typedef enum opcode { 
-    Halt,        // R0    -- return;
-    Print,       // R1    -- print(R(X))
-    Check,       // R1LIT -- check(R(X), L(YZ))
-    Expect,      // R1LIT -- expect(R(X), L(YZ))
-    Add,         // R3    -- R(X) := R(Y) + R(Z)
-    LoadLiteral, // R1LIT -- R(X) := L(YZ)
-    Goto,        // R0I24 -- ip += XYZ
-    If,          // R1    -- if (truthy(R(X))) { ip++; }
-    GetGlobal,   // R1LIT -- R(X) := _G[LIT]
-    SetGlobal,   // R1LIT -- _G[LIT] := R(X)
-    Divide,      // R3    -- R(X) := R(Y) / R(Z)
-    Subtract,    // R3    -- R(X) := R(Y) - R(Z)
-    Multiply,    // R3    -- R(X) := R(Y) * R(Z)
-    Abs,         // R2    -- R(X) := |R(Y)|
-    Hash,        // R2    -- R(X) := hash(R(Y))
-    CopyReg,     // R2    -- R(X) := R(Y)
-    Call,
-    Return,
-    Tailcall,
-    Error,
-    TestEq,
-    Unimp,       // stand-in for opcodes not yet implemented
-                 // used to query number of opcodes, so must be last
-} Opcode;
+/* Calls the macro on each opcode, with the given separator
+ * First argument is lowercase, then TitleCase, then UPPERCASE
+ */
+#define FOREACH_OPCODE(_)                    \
+    _(halt, Halt, HALT)                      \
+    _(print, Print, PRINT)                   \
+    _(check, Check, CHECK)                   \
+    _(expect, Expect, EXPECT)                \
+    _(add, Add, ADD)                         \
+    _(loadliteral, LoadLiteral, LOADLITERAL) \
+    _(goto, Goto, GOTO)                      \
+    _(if, If, IF)                            \
+    _(getglobal, GetGlobal, GETGLOBAL)       \
+    _(setglobal, SetGlobal, SETGLOBAL)       \
+    _(divide, Divide, DIVIDE)                \
+    _(subtract, Subtract, SUBTRACT)          \
+    _(multiply, Multiply, MULTIPLY)          \
+    _(abs, Abs, ABS)                         \
+    _(hash, Hash, HASH)                      \
+    _(copyreg, CopyReg, COPYREG)             \
+    _(call, Call, CALL)                      \
+    _(return, Return, RETURN)                \
+    _(tailcall, Tailcall, TAILCALL)          \
+    _(error, Error, ERROR)                   \
+    _(testeq, TestEq, TESTEQ)
 
+/* Define the enum using the title-case version of the opcode names */
+#define X(lower, title, upper) title,
+typedef enum {
+    FOREACH_OPCODE(X)
+    Unimp
+} Opcode;
+#undef X
 
 #endif

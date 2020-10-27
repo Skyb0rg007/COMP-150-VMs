@@ -29,33 +29,11 @@
 #include "svmdebug.h"
 #include "disasm.h"
 
+
 /* 'labels as values' is a GCC extension used for implementing 'vmrun'.
  * As a result, pedantic warnings must be disabled for this function.
  */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
 void vmrun(VMState vm, struct VMFunction *fun) {
-
-    const char *dump_decode = svmdebug_value("decode");
-    const char *dump_call   = svmdebug_value("call");
-    (void)dump_call;
-
-    #define push_act(dest) do {                                           \
-        struct Activation *__a = &vm->activations[vm->num_activations++]; \
-        if (vm->num_activations > NUM_ACTIVATIONS)                        \
-           runerror(vm, "Stack overflow!");                               \
-        __a->ip = ip;                                                     \
-        __a->destreg = (dest);                                            \
-        __a->window = vm->window;                                         \
-    } while (0)
-    #define pop_act(dest) do {                                            \
-        struct Activation *__a = &vm->activations[--vm->num_activations]; \
-        if (vm->num_activations < 0)                                      \
-            runerror(vm, "Stack underflow!");                             \
-        ip = __a->ip;                                                     \
-        vm->window = __a->window;                                         \
-        *(dest) = __a->destreg;                                           \
-    } while (0)
 
     /* Points to the current instruction pointer */
     Instruction *ip = fun->instructions;
@@ -64,73 +42,90 @@ void vmrun(VMState vm, struct VMFunction *fun) {
     /* The current opcode */
     Opcode op;
 
-    /* Jump-table using the GCC 'labels as values' extension
-     * Note that the Opcode type is an enum, so this table should
-     * not have gaps.
-     */
-    static const void *dispatch_table[] = {
-        [Halt] = &&do_halt,
-        [Print] = &&do_print,
-        [Check] = &&do_check,
-        [Expect] = &&do_expect,
-        [Add] = &&do_add,
-        [LoadLiteral] = &&do_load_literal,
-        [Goto] = &&do_goto,
-        [If] = &&do_if,
-        [GetGlobal] = &&do_get_global,
-        [SetGlobal] = &&do_set_global,
-        [Divide] = &&do_divide,
-        [Subtract] = &&do_subtract,
-        [Multiply] = &&do_multiply,
-        [Abs] = &&do_abs,
-        [Hash] = &&do_hash,
-        [CopyReg] = &&do_copyreg,
-        [Call] = &&do_call,
-        [Return] = &&do_return,
-        [Tailcall] = &&do_tailcall,
-        [Error] = &&do_error,
-        [TestEq] = &&do_test_eq,
-    };
-    /* Increments the instruction pointer, jumping to the label in the jump table */
-    #define DISPATCH() do {            \
+    /* This code is run before every instruction */
+    #define SETUP() do {               \
         i = *ip++;                     \
         op = opcode(i);                \
         assert(op >= 0 && op < Unimp); \
-        goto *dispatch_table[op];      \
     } while (0)
-        /* if (dump_decode) \ */
-            /* idump(stderr, vm, pc, instr, window_pos, pRx, pRy, pRz); \ */
 
-    DISPATCH();
-
-    /* Implementation of each of the opcodes
-     * Each section should end with a call to DISPATCH() to jump to the next
-     * instruction's code
+    #define USE_COMPUTED_GOTO
+#ifdef USE_COMPUTED_GOTO
+    /* Define the jump-table mapping opcodes to labels
+     * Use the TitleCase names to match case versions
      */
-    {
-do_halt:
+    #define AddrLbl(lbl) (__extension__ &&lbl)
+    #define X(lower, title, upper) [title] = AddrLbl(do_##title),
+    static const void *jmptbl[] = {
+        FOREACH_OPCODE(X)
+        AddrLbl(do_default),
+        AddrLbl(do_default),
+        AddrLbl(do_default),
+        AddrLbl(do_default)
+    };
+    #undef X
+    #undef AddrLbl
+
+    /* Transform 'case' and 'default' into normal labels */
+    #define CASE(x) do_##x
+    #define DEFAULT do_default
+    /* Transform 'break' into a dispatcher */
+    #define BREAK do {                                   \
+        SETUP();                                         \
+        _Pragma("GCC diagnostic push");                  \
+        _Pragma("GCC diagnostic ignored\"-Wpedantic\""); \
+        goto *jmptbl[op];                                \
+        _Pragma("GCC diagnostic pop")                    \
+    } while (0)
+    /* Start the loop by dispatching.
+     * Nothing has to be done at the end. */
+    #define BEGIN_LOOP BREAK;
+    #define END_LOOP   (void)0
+
+#else /* ifdef USE_COMPUTED_GOTO */
+
+    #define CASE(x) case x
+    #define DEFAULT default
+    /* Use a label + goto instead of a 'while' loop.
+     * This allows for breaking out of a loop within the interpreter loop */
+    #define BREAK goto begin_loop
+    #define BEGIN_LOOP  \
+        begin_loop: {   \
+            SETUP();    \
+            switch (op)
+    #define END_LOOP }
+
+#endif /* ifdef USE_COMPUTED_GOTO */
+
+    const char *dump_decode = svmdebug_value("decode");
+    const char *dump_call   = svmdebug_value("call");
+    (void)dump_decode;
+    (void)dump_call;
+
+    BEGIN_LOOP {
+CASE(Halt):
         return;
-do_print:
+CASE(Print):
         {
             uint8_t reg = uX(i);
             print("%v\n", vmstate_get_reg(vm, reg));
-            DISPATCH();
+            BREAK;
         }
-do_check:
+CASE(Check):
         {
             uint8_t reg = uX(i);
             uint16_t lit = uYZ(i);
             check(AS_CSTRING(vm, vmstate_get_lit(vm, lit)), vmstate_get_reg(vm, reg));
-            DISPATCH();
+            BREAK;
         }
-do_expect:
+CASE(Expect):
         {
             uint8_t reg = uX(i);
             uint16_t lit = uYZ(i);
             expect(AS_CSTRING(vm, vmstate_get_lit(vm, lit)), vmstate_get_reg(vm, reg));
-            DISPATCH();
+            BREAK;
         }
-do_add:
+CASE(Add):
         {
             uint8_t reg1 = uX(i);
             uint8_t reg2 = uY(i);
@@ -141,46 +136,46 @@ do_add:
                     mkNumberValue(
                         AS_NUMBER(vm, vmstate_get_reg(vm, reg2))
                         + AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
-            DISPATCH();
+            BREAK;
         }
-do_load_literal:
+CASE(LoadLiteral):
         {
             uint8_t reg = uX(i);
             uint16_t lit = uYZ(i);
             vmstate_set_reg(vm, reg, vmstate_get_lit(vm, lit));
-            DISPATCH();
+            BREAK;
         }
-do_goto:
+CASE(Goto):
         {
             int32_t offset = iXYZ(i);
             ip += offset;
-            DISPATCH();
+            BREAK;
         }
-do_if:
+CASE(If):
         {
             uint8_t reg = uX(i);
             if (!value_truthy(vmstate_get_reg(vm, reg)))
                 ip++;
-            DISPATCH();
+            BREAK;
         }
-do_get_global:
+CASE(GetGlobal):
         {
             uint8_t reg = uX(i);
             uint8_t lit = uYZ(i);
             Value g = VTable_get(vm->globals, vmstate_get_lit(vm, lit));
             vmstate_set_reg(vm, reg, g);
-            DISPATCH();
+            BREAK;
         }
-do_set_global:
+CASE(SetGlobal):
         {
             uint8_t reg = uX(i);
             uint8_t lit = uYZ(i);
             VTable_put(vm->globals,
                     vmstate_get_lit(vm, lit),
                     vmstate_get_reg(vm, reg));
-            DISPATCH();
+            BREAK;
         }
-do_divide:
+CASE(Divide):
         {
             uint8_t reg1 = uX(i);
             uint8_t reg2 = uY(i);
@@ -191,9 +186,9 @@ do_divide:
                     mkNumberValue(
                         AS_NUMBER(vm, vmstate_get_reg(vm, reg2))
                         / AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
-            DISPATCH();
+            BREAK;
         }
-do_subtract:
+CASE(Subtract):
         {
             uint8_t reg1 = uX(i);
             uint8_t reg2 = uY(i);
@@ -204,9 +199,9 @@ do_subtract:
                     mkNumberValue(
                         AS_NUMBER(vm, vmstate_get_reg(vm, reg2))
                         - AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
-            DISPATCH();
+            BREAK;
         }
-do_multiply:
+CASE(Multiply):
         {
             uint8_t reg1 = uX(i);
             uint8_t reg2 = uY(i);
@@ -217,9 +212,9 @@ do_multiply:
                     mkNumberValue(
                         AS_NUMBER(vm, vmstate_get_reg(vm, reg2))
                         * AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
-            DISPATCH();
+            BREAK;
         }
-do_abs:
+CASE(Abs):
         {
             uint8_t reg1 = uX(i);
             uint8_t reg2 = uY(i);
@@ -228,9 +223,9 @@ do_abs:
                     reg1,
                     mkNumberValue(
                         fabs(AS_NUMBER(vm, vmstate_get_reg(vm, reg2)))));
-            DISPATCH();
+            BREAK;
         }
-do_hash:
+CASE(Hash):
         {
             uint8_t reg1 = uX(i);
             uint8_t reg2 = uY(i);
@@ -238,9 +233,9 @@ do_hash:
                     vm,
                     reg1,
                     mkNumberValue(hashvalue(vmstate_get_reg(vm, reg2))));
-            DISPATCH();
+            BREAK;
         }
-do_copyreg:
+CASE(CopyReg):
         {
             uint8_t reg1 = uX(i);
             uint8_t reg2 = uY(i);
@@ -248,49 +243,50 @@ do_copyreg:
                     vm,
                     reg1,
                     vmstate_get_reg(vm, reg2));
-            DISPATCH();
+            BREAK;
         }
-do_call:
+CASE(Call):
         {
             int destreg = uX(i);
             int funreg = uY(i);
             int lastarg = uZ(i);
             struct VMFunction *fun = AS_VMFUNCTION(vm, vmstate_get_reg(vm, funreg));
             assert(lastarg - funreg == fun->arity);
-            push_act(destreg);
+            vmstate_store_act(vm, ip, destreg);
             vm->window += funreg;
             ip = fun->instructions;
-            DISPATCH();
+            BREAK;
         }
-do_return:
+CASE(Return):
         {
             int retreg = uX(i);
             Value retval = vmstate_get_reg(vm, retreg);
-            int destreg;
-            pop_act(&destreg);
+            int destreg = vmstate_restore_act(vm, &ip);
             vmstate_set_reg(vm, destreg, retval);
-            DISPATCH();
+            BREAK;
         }
-do_tailcall:
+CASE(Tailcall):
         {
             int funreg = uX(i);
             int lastarg = uY(i);
             int num_args = lastarg - funreg;
             Value funVal = vmstate_get_reg(vm, funreg);
             struct VMFunction *fun = AS_VMFUNCTION(vm, funVal);
-            vmstate_set_reg(vm, 0, funVal);
+            /* vmstate_set_reg(vm, 0, funVal); */
+            /* XXX: bounds checking before memmove */
             memmove(vm->registers + vm->window,
                     vm->registers + vm->window + funreg,
                     (num_args + 1) * sizeof(Value));
             ip = fun->instructions;
-            DISPATCH();
+            BREAK;
         }
-do_error:
+CASE(Error):
         {
             /* XXX */
             abort();
+            BREAK;
         }
-do_test_eq:
+CASE(TestEq):
         {
             int reg1 = uX(i);
             int reg2 = uY(i);
@@ -299,9 +295,13 @@ do_test_eq:
                     vm,
                     reg1,
                     mkBooleanValue(AS_NUMBER(vm, vmstate_get_reg(vm, reg2)) == AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
-            DISPATCH();
+            BREAK;
+        }
+DEFAULT:
+        {
+            abort();
+            BREAK;
         }
     }
-    #undef DISPATCH
+    END_LOOP;
 }
-#pragma GCC diagnostic pop

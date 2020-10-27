@@ -14,7 +14,8 @@
 #include "vtable.h"
 #include "utils/vector.h"
 #include "vmstack.h"
-#include "vmerror.h"
+/* Can't include "vmerror.h" because it includes this file */
+extern noreturn void runerror(VMState state, const char *format, ...);
 
 /* Number of VM registers */
 #define NUM_REGISTERS 500
@@ -25,6 +26,7 @@
 
 typedef struct VMState *VMState;
 
+/* XXX: Reorder fields and remove extra useless comments */
 struct VMState {
     /* Global variables */
     VTable_T globals;
@@ -35,6 +37,7 @@ struct VMState {
     Value registers[NUM_REGISTERS];
     /* Activation records */
     struct Activation activations[NUM_ACTIVATIONS];
+    /* XXX: offset -> pointer */
     int window;
 };
 
@@ -56,6 +59,7 @@ static inline Value vmstate_get_lit(VMState vm, uint16_t index)
 static inline Value vmstate_get_reg(VMState vm, int index)
 {
     index += vm->window;
+    /* XXX: Remove when debug is done */
     if (index >= NUM_REGISTERS)
         runerror(vm, "Window broken!");
     return vm->registers[index];
@@ -67,6 +71,24 @@ static inline void vmstate_set_reg(VMState vm, int index, Value x)
     if (index >= NUM_REGISTERS)
         runerror(vm, "Window broken!");
     vm->registers[index] = x;
+}
+
+static inline void vmstate_store_act(VMState vm, Instruction *ip, int destreg) {
+    struct Activation *a = &vm->activations[vm->num_activations++];
+    if (vm->num_activations > NUM_ACTIVATIONS)
+        runerror(vm, "Stack overflow!");
+    a->ip = ip;
+    a->destreg = destreg;
+    a->window = vm->window;
+}
+
+static inline int vmstate_restore_act(VMState vm, Instruction **ip) {
+    struct Activation *a = &vm->activations[--vm->num_activations];
+    if (vm->num_activations < 0)
+        runerror(vm, "Stack underflow!");
+    *ip = a->ip;
+    vm->window = a->window;
+    return a->destreg;
 }
 
 int literal_count(VMState state);

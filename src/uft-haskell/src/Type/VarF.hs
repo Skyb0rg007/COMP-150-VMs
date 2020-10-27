@@ -314,6 +314,13 @@ trialF (VarF v) l =
     withDict (apRemoveLaw @k @l @r @x) $
         first VarF $ trial v l
 
+trialF'
+    :: forall k l (r :: Row (k -> Type)) x. KnownSymbol l
+    => VarF r x
+    -> Label l
+    -> Maybe (ApRow r x .! l)
+trialF' (VarF v) l = trial' v l
+
 caseonF
     :: BiForall r (ApRow v x) (AppliesTo y)
     => Rec r

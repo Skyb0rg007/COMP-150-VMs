@@ -14,19 +14,19 @@
    This module uses the singletons pattern to create depdendently typed primitives
 -}
 
-module Uft.Primitives
-    ( PrimArgKind (..)
-    , PrimRetKind (..)
-    , SPrimArgKind (..)
-    , SPrimRetKind (..)
-    , Primitive (..)
-    , SomePrimitive (..)
-    , parsePrimitive
-    , PrimVec (..)
-    , PrimRet (..)
-    , SomePrim (..)
-    , primCons
-    ) where
+module Uft.Primitives where
+    -- ( PrimArgKind (..)
+    -- , PrimRetKind (..)
+    -- , SPrimArgKind (..)
+    -- , SPrimRetKind (..)
+    -- , Primitive (..)
+    -- , SomePrimitive (..)
+    -- , parsePrimitive
+    -- , PrimVec (..)
+    -- , PrimRet (..)
+    -- , SomePrim (..)
+    -- , primCons
+    -- ) where
 
 import           Data.Bifunctor       (Bifunctor (..))
 import           Data.HashMap.Strict (HashMap)
@@ -37,6 +37,7 @@ import           Data.Singletons
 import           Data.Singletons.Decide
 import           Data.Singletons.TH
 import           Data.Text            (Text)
+import           Data.Row
 
 singletons [d|
     -- | DataKind representing the primitive argument kind
@@ -99,44 +100,61 @@ parsePrimitive = flip HashMap.lookup primMap
             ]
 
 -- | Dependent vector that holds the arguments to a given primitive
-data family PrimVec :: PrimArgKind -> a -> Type
-data instance PrimVec PNullary a = PVNullary
-data instance PrimVec PUnary   a = PVUnary !a
-data instance PrimVec PBinary  a = PVBinary !a !a
+data family PrimVec :: PrimArgKind -> a -> b -> Type
+data instance PrimVec PNullary a b = PVNullary
+data instance PrimVec PUnary   a b = PVUnary !a
+data instance PrimVec PBinary  a b = PVBinary !a !a
+data instance PrimVec PUnLit   a b = PVUnLit !b
+data instance PrimVec PBinLit  a b = PVBinLit !a !b
 
-instance SingI a => Eq1 (PrimVec a) where
-    liftEq eq =
+instance SingI a => Eq2 (PrimVec a) where
+    liftEq2 eq1 eq2 =
         case sing @a of
           SPNullary -> \PVNullary PVNullary -> True
-          SPUnary   -> \(PVUnary x) (PVUnary x') -> x `eq` x'
-          SPBinary  -> \(PVBinary x y) (PVBinary x' y') -> x `eq` x' && y `eq` y'
-          -- SPBinLit  -> \(SPBinLit 
-instance SingI a => Ord1 (PrimVec a) where
-    liftCompare cmp =
+          SPUnary   -> \(PVUnary x) (PVUnary x') -> x `eq1` x'
+          SPBinary  -> \(PVBinary x y) (PVBinary x' y') -> x `eq1` x' && y `eq1` y'
+          SPUnLit   -> \(PVUnLit x) (PVUnLit x') -> x `eq2` x'
+          SPBinLit  -> \(PVBinLit x y) (PVBinLit x' y') -> x `eq1` x' && y `eq2` y'
+instance SingI a => Ord2 (PrimVec a) where
+    liftCompare2 cmp1 cmp2 =
         case sing @a of
           SPNullary -> \PVNullary PVNullary -> EQ
-          SPUnary   -> \(PVUnary x) (PVUnary x') -> x `cmp` x'
-          SPBinary  -> \(PVBinary x y) (PVBinary x' y') -> x `cmp` x' <> y `cmp` y'
-instance SingI a => Show1 (PrimVec a) where
-    liftShowsPrec sp _ d =
+          SPUnary   -> \(PVUnary x) (PVUnary x') -> x `cmp1` x'
+          SPBinary  -> \(PVBinary x y) (PVBinary x' y') -> x `cmp1` x' <> y `cmp1` y'
+          SPUnLit   -> \(PVUnLit x) (PVUnLit x') -> x `cmp2` x'
+          SPBinLit  -> \(PVBinLit x y) (PVBinLit x' y') -> x `cmp1` x' <> y `cmp2` y'
+instance SingI a => Show2 (PrimVec a) where
+    liftShowsPrec2 sp1 _ sp2 _ d =
         case sing @a of
           SPNullary -> \PVNullary -> showString "PVNullary"
-          SPUnary   -> \(PVUnary x) -> showParen (d > 10) $
-              showString "PVUnary " . sp 11 x
-          SPBinary  -> \(PVBinary x y) -> showParen (d > 10) $
-              showString "PVBinary " . sp 11 x . showChar ' ' . sp 11 y
-instance (SingI a, Eq b) => Eq (PrimVec a b) where
+          SPUnary -> \(PVUnary x) -> showParen (d > 10) $
+              showString "PVUnary " . sp1 11 x
+          SPBinary -> \(PVBinary x y) -> showParen (d > 10) $
+              showString "PVBinary " . sp1 11 x . showChar ' ' . sp1 11 y
+          SPUnLit -> \(PVUnLit x) -> showParen (d > 10) $
+              showString "PVUnLit " . sp2 11 x
+          SPBinLit -> \(PVBinLit x y) -> showParen (d > 10) $
+              showString "PVBinLit " . sp1 11 x . showChar ' ' . sp2 11 y
+instance (SingI a, Eq b) => Eq1 (PrimVec a b) where
+    liftEq = liftEq2 (==)
+instance (SingI a, Eq b, Eq c) => Eq (PrimVec a b c) where
     (==) = eq1
-instance (SingI a, Ord b) => Ord (PrimVec a b) where
+instance (SingI a, Ord b) => Ord1 (PrimVec a b) where
+    liftCompare = liftCompare2 compare
+instance (SingI a, Ord b, Ord c) => Ord (PrimVec a b c) where
     compare = compare1
-instance (SingI a, Show b) => Show (PrimVec a b) where
+instance (SingI a, Show b) => Show1 (PrimVec a b) where
+    liftShowsPrec = liftShowsPrec2 showsPrec showList
+instance (SingI a, Show b, Show c) => Show (PrimVec a b c) where
     showsPrec = showsPrec1
-instance SingI a => Functor (PrimVec a) where
-    fmap f =
+instance SingI a => Bifunctor (PrimVec a) where
+    bimap f g =
         case sing @a of
           SPNullary -> \PVNullary      -> PVNullary
           SPUnary   -> \(PVUnary x)    -> PVUnary (f x)
           SPBinary  -> \(PVBinary x y) -> PVBinary (f x) (f y)
+          SPUnLit   -> \(PVUnLit x)    -> PVUnLit (g x)
+          SPBinLit  -> \(PVBinLit x y) -> PVBinLit (f x) (g y)
 
 -- | Dependent data structure representing the return value of the primitive
 data family PrimRet :: PrimRetKind -> a -> Type
@@ -172,25 +190,20 @@ instance (SingI a, Ord b) => Ord (PrimRet a b) where
     compare = compare1
 
 -- | Some primitive application, with the given types as arguments and possible return value
-data SomePrim (arg :: Type) (ret :: Type) =
-    forall ak rk. SomePrim !(Primitive ak rk) !(PrimVec ak arg) !(PrimRet rk ret)
-instance Bifunctor SomePrim where
-    bimap f g (SomePrim (Primitive p) pv pr) =
-        SomePrim (Primitive p) (fmap f pv) (fmap g pr)
-instance Functor (SomePrim arg) where
-    fmap = second
-instance Eq2 SomePrim where
-    liftEq2 eq1 eq2 (SomePrim (p@Primitive{} :: Primitive a b) pv pr) (SomePrim (p'@Primitive{} :: Primitive a' b') pv' pr') =
-        case (sing @a %~ sing @a', sing @b %~ sing @b') of
+data SomePrim r =
+    forall ak rk. SomePrim !(Primitive ak rk) !(PrimVec ak (r .! "arg") (r .! "lit")) !(PrimRet rk (r .! "ret"))
+
+instance (Eq (r .! "arg"), Eq (r .! "lit"), Eq (r .! "ret")) => Eq (SomePrim r) where
+    (==) (SomePrim (p@Primitive{} :: Primitive ak rk) pv pr) (SomePrim (p'@Primitive{} :: Primitive ak' rk') pv' pr') =
+        case (sing @ak %~ sing @ak', sing @rk %~ sing @rk') of
           (Proved Refl, Proved Refl) ->
-              p == p' && liftEq eq1 pv pv' && liftEq eq2 pr pr'
+              p == p' && pv == pv' && pr == pr'
           _ -> False
-instance Ord2 SomePrim where
-    liftCompare2 cmp1 cmp2 (SomePrim (p@Primitive{} :: Primitive a b) pv pr) (SomePrim (p'@Primitive{} :: Primitive a' b') pv' pr') =
-        case (sing @a %~ sing @a', sing @b %~ sing @b') of
-          (Proved Refl, Proved Refl) ->
-              compare p p' <> liftCompare cmp1 pv pv' <> liftCompare cmp2 pr pr'
-          _ -> sCompare' (sing @a) (sing @a') <> sCompare' (sing @b) (sing @b')
+instance (Ord (r .! "arg"), Ord (r .! "lit"), Ord (r .! "ret")) => Ord (SomePrim r) where
+    compare (SomePrim (p@Primitive{} :: Primitive ak rk) pv pr) (SomePrim (p'@Primitive{} :: Primitive ak' rk') pv' pr') =
+        case (sing @ak %~ sing @ak', sing @rk %~ sing @rk') of
+          (Proved Refl, Proved Refl) -> compare p p' <> compare pv pv' <> compare pr pr'
+          _ -> sCompare' (sing @ak) (sing @ak') <> sCompare' (sing @rk) (sing @rk')
         where
             sCompare' :: forall a (t1 :: a) (t2 :: a). SOrd a => Sing t1 -> Sing t2 -> Ordering
             sCompare' s1 s2 =
@@ -198,26 +211,12 @@ instance Ord2 SomePrim where
                   SLT -> LT
                   SGT -> GT
                   SEQ -> EQ
-instance Show2 SomePrim where
-    liftShowsPrec2 sp1 sl1 sp2 sl2 d (SomePrim p@Primitive{} pv pr) =
-        showParen (d > 10) $
-            showString "SomePrim " 
-            . showsPrec 11 p . showChar ' '
-            . liftShowsPrec sp1 sl1 11 pv . showChar ' '
-            . liftShowsPrec sp2 sl2 11 pr
-instance Eq a => Eq1 (SomePrim a) where
-    liftEq = liftEq2 (==)
-instance Ord a => Ord1 (SomePrim a) where
-    liftCompare = liftCompare2 compare
-instance Show a => Show1 (SomePrim a) where
-    liftShowsPrec = liftShowsPrec2 showsPrec showList
-instance (Eq a, Eq b) => Eq (SomePrim a b) where
-    (==) = eq1
-instance (Ord a, Ord b) => Ord (SomePrim a b) where
-    compare = compare1
-instance (Show a, Show b) => Show (SomePrim a b) where
-    showsPrec = showsPrec1
-
+instance (Show (r .! "arg"), Show (r .! "lit"), Show (r .! "ret")) => Show (SomePrim r) where
+    showsPrec d (SomePrim p@Primitive{} pv pr) =
+        showString "SomePrim "
+        . showsPrec 11 p . showChar ' '
+        . showsPrec 11 pv . showChar ' '
+        . showsPrec 11 pr
 
 primCons :: Primitive PBinary PRet
 primCons = Primitive "cons"

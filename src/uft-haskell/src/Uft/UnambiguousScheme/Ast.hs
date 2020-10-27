@@ -51,7 +51,7 @@ type ExpRowF =
    .+ "while"     .== ExpWhileF
    .+ "begin"     .== ExpBeginF
    .+ "apply"     .== ExpApplyF
-   .+ "applyPrim" .== ExpApplyPrimF
+   -- .+ "applyPrim" .== ExpApplyPrimF
    .+ "let"       .== ExpLetF LetKind
    .+ "lambda"    .== ExpLambdaF
     )

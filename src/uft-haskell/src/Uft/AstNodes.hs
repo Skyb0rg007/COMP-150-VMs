@@ -44,6 +44,8 @@ newtype LitBoolF (a :: Type) = LitBoolF' Bool
 -- | Empty list literal: ()
 data LitEmptyF (a :: Type) = LitEmptyF'
     deriving (Show, Eq, Ord, Functor)
+data LitNilF (a :: Type) = LitNilF'
+    deriving (Show, Eq, Ord, Functor)
 -- | Pair literal: (a . b)
 -- Note that '(1 2 3) produces LitEmpty and LitPair
 data LitPairF a = LitPairF' !a !a
@@ -57,7 +59,7 @@ newtype LitByteVecF (a :: Type) = LitByteVecF' (Vector Word8)
 
 derive [deriveOpenADT (drop 3), deriveShow1, deriveEq1, deriveOrd1]
     [ ''LitNumF, ''LitStrF, ''LitSymF, ''LitCharF, ''LitBoolF
-    , ''LitEmptyF, ''LitPairF, ''LitVectorF, ''LitByteVecF
+    , ''LitEmptyF, ''LitPairF, ''LitVectorF, ''LitByteVecF, ''LitNilF
     ]
 
 -- * Expressions
@@ -96,10 +98,10 @@ newtype ExpBeginF a = ExpBeginF' (Vector a)
 data ExpApplyF a = ExpApplyF' !a !(Vector a)
     deriving (Show, Eq, Ord, Functor)
 -- | Application of a primitive
-data ExpApplyPrimF a = ExpApplyPrimF' !(SomePrim a ())
-    deriving (Show, Eq, Ord)
-instance Functor ExpApplyPrimF where
-    fmap f (ExpApplyPrimF' p) = ExpApplyPrimF' (first f p)
+-- data ExpApplyPrimF r a = ExpApplyPrimF' !(SomePrim r)
+    -- deriving (Show, Eq, Ord)
+-- instance Functor ExpApplyPrimF where
+    -- fmap f (ExpApplyPrimF' p) = ExpApplyPrimF' (first f p)
 -- | Application of a name
 data ExpApplyNameF name a = ExpApplyNameF' !name !(Vector a)
     deriving (Show, Eq, Ord, Functor)
@@ -111,21 +113,21 @@ data ExpLetF lk a = ExpLetF' !lk !(Vector (Text, a)) !a
 data ExpLambdaF a = ExpLambdaF' !(Vector Text) !a
     deriving (Show, Eq, Ord, Functor)
 
-instance Show1 ExpApplyPrimF where
-    liftShowsPrec sp sl d (ExpApplyPrimF' p) = showParen (d > 10) $
-        showString "ExpApplyPrimF' " . liftShowsPrec2 sp sl showsPrec showList 11 p
-instance Eq1 ExpApplyPrimF where
-    liftEq eq (ExpApplyPrimF' p1) (ExpApplyPrimF' p2) =
-        liftEq2 eq (==) p1 p2
-instance Ord1 ExpApplyPrimF where
-    liftCompare cmp (ExpApplyPrimF' p1) (ExpApplyPrimF' p2) =
-        liftCompare2 cmp compare p1 p2
+-- instance Show1 ExpApplyPrimF where
+    -- liftShowsPrec sp sl d (ExpApplyPrimF' p) = showParen (d > 10) $
+        -- showString "ExpApplyPrimF' " . liftShowsPrec2 sp sl showsPrec showList 11 p
+-- instance Eq1 ExpApplyPrimF where
+    -- liftEq eq (ExpApplyPrimF' p1) (ExpApplyPrimF' p2) =
+        -- liftEq2 eq (==) p1 p2
+-- instance Ord1 ExpApplyPrimF where
+    -- liftCompare cmp (ExpApplyPrimF' p1) (ExpApplyPrimF' p2) =
+        -- liftCompare2 cmp compare p1 p2
 derive [deriveOpenADT (drop 3), deriveShow1, deriveEq1, deriveOrd1]
     [ ''ExpLitF, ''ExpVarF, ''ExpVarLocalF, ''ExpVarGlobalF
     , ''ExpSetF, ''ExpSetLocalF, ''ExpSetGlobalF, ''ExpIfF, ''ExpWhileF
     , ''ExpBeginF, ''ExpApplyF, ''ExpApplyNameF, ''ExpLetF, ''ExpLambdaF
     ]
-deriveOpenADT (drop 3) ''ExpApplyPrimF
+-- deriveOpenADT (drop 3) ''ExpApplyPrimF
 
 -- * Statements
 

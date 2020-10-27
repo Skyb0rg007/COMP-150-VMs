@@ -19,19 +19,19 @@ import           Data.Text.Prettyprint.Doc
 import           GHC.TypeLits                 (Symbol)
 import           System.Environment           (getArgs)
 import           System.Exit
-import qualified Uft.Scheme.Ast               as Scheme
-import           Uft.Scheme.Disambiguate      ()
-import           Uft.Scheme.Parse             ()
-import           Uft.Transform
-import qualified Uft.UnambiguousScheme.Ast    as Unamb
+-- import qualified Uft.Scheme.Ast               as Scheme
+-- import           Uft.Scheme.Disambiguate      ()
+-- import           Uft.Scheme.Parse             ()
+-- import           Uft.Transform
+-- import qualified Uft.UnambiguousScheme.Ast    as Unamb
 
 main = pure ()
 
-fileToScheme :: (FilePath, Text) -> Either Text Scheme.Prog
-fileToScheme = transform @"parseScheme"
+-- fileToScheme :: (FilePath, Text) -> Either Text Scheme.Prog
+-- fileToScheme = transform @"parseScheme"
 
-fileToUnamb :: (FilePath, Text) -> Either Text Unamb.Prog
-fileToUnamb = fileToScheme >=> transform @"disambiguate"
+-- fileToUnamb :: (FilePath, Text) -> Either Text Unamb.Prog
+-- fileToUnamb = fileToScheme >=> transform @"disambiguate"
 
 {- import qualified Uft.Asm.Ast                     as Asm
 import qualified Uft.Asm.LabelElim               as Asm
@@ -87,4 +87,5 @@ pipeline fileName fileContent = do
     liftIO $ Text.IO.putStr vo
     -- let scheme' :: Scheme.Prog = KNormal.knormToScheme knorm
     -- liftIO $ print $ pretty scheme'
+ -}
  -}

@@ -4,6 +4,7 @@
 #include "iformat.h"
 #include "value.h"
 
+/* XXX: comment mentioning names */
 struct Activation {
     Instruction *ip;
     int destreg;
