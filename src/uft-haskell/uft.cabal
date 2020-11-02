@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 27554a10e0fb2a7b25fd93c980dd2b58db8ee714b367194879dbcedc1f08d8c2
+-- hash: 86f93d0a42540f61c18ea8fa1ab4790a8c50b3c2d880ef22675ae25286665620
 
 name:           uft
 version:        0.1.0.0
@@ -31,6 +31,11 @@ library
       Type.List
       Type.OpenADT
       Type.OpenADT.TH
+      Uft.Asm.Ast
+      Uft.Asm.LabelElim
+      Uft.Asm.ToVO
+      Uft.KNormal.Codegen
+      Uft.KNormal.FromUnamb
       Uft.Pretty
       Uft.Primitives
       Uft.Scheme.Ast

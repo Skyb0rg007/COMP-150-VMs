@@ -7,6 +7,7 @@ module Main where
 -- import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Except
+import           Data.Function             ((&))
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict       as HashMap
 import           Data.Kind
@@ -61,16 +62,19 @@ pipelines :: (MonadIO m, MonadError Text m)
           => HashMap Text (FilePath -> Text -> m ())
 pipelines = HashMap.fromList
     [ ("vs-vs", schemeToScheme)
+    , ("vs-unamb", schemeToUnamb)
     ]
 
--- type SchemeProg  = (LitListF : LitDotListF : SchemeProg1)
--- type SchemeProg1 = (ParseProgRows ++ '[LitEmptyF, LitPairF]) \\ '[LitListF, LitDotListF]
 schemeToScheme :: Pipeline
 schemeToScheme fileName fileContent = do
     scheme <- parseScheme fileName fileContent
-    let scheme' = listExpand scheme
-    liftIO . print . prettyF $ scheme'
-    liftIO . print $ scheme'
+    liftIO . print . prettyF $ scheme
+
+schemeToUnamb :: Pipeline
+schemeToUnamb fileName fileContent = do
+    scheme <- parseScheme fileName fileContent
+    unamb <- scheme & listExpand & letStarElim & convertPrim & disambiguate
+    liftIO . print . prettyF $ unamb
 
 -- schemeToUnamb :: Pipeline
 -- schemeToUnamb fileName fileContent = do

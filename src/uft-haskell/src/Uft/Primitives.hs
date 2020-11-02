@@ -29,6 +29,7 @@ data Prim = Prim
     { _prim_kind  :: !PrimKind
     , _prim_name  :: !Text
     , _prim_arity :: !Int
+    , _prim_lit   :: !Bool
     }
     deriving (Show, Eq, Ord, Read)
 
@@ -36,27 +37,29 @@ parsePrim :: Text -> Maybe Prim
 parsePrim = flip Map.lookup m
     where
     m :: Map Text Prim
-    m = Map.fromList $ map (\(x, k, n) -> (x, Prim k x n)) prims
-    prims :: [(Text, PrimKind, Int)]
+    m = Map.fromList $ map (\(x, k, n, l) -> (x, Prim k x n l)) prims
+    prims :: [(Text, PrimKind, Int, Bool)]
     prims =
-        [ (,,) "abs"          SetsRegister 1
-        , (,,) "abs"          SetsRegister 1
-        , (,,) "/"            SetsRegister 2
-        , (,,) "//"           SetsRegister 2
-        , (,,) "-"            SetsRegister 2
-        , (,,) "+"            SetsRegister 2
-        , (,,) "cons"         SetsRegister 2
-        , (,,) "copyreg"      SetsRegister 1
-        , (,,) "getglobal"    SetsRegister 1
-        , (,,) "hash"         SetsRegister 1
-        , (,,) "loadliteral"  SetsRegister 1
-        , (,,) "check_assert" HasEffect    2
-        , (,,) "check"        HasEffect    2
-        , (,,) "expect"       HasEffect    2
-        , (,,) "println"      HasEffect    1
-        , (,,) "print"        HasEffect    1
-        , (,,) "printu"       HasEffect    1
-        , (,,) "setglobal"    HasEffect    2
+        [ (,,,) "abs"          SetsRegister 1 False
+        , (,,,) "abs"          SetsRegister 1 False
+        , (,,,) "/"            SetsRegister 2 False
+        , (,,,) "//"           SetsRegister 2 False
+        , (,,,) "-"            SetsRegister 2 False
+        , (,,,) "+"            SetsRegister 2 False
+        , (,,,) "cons"         SetsRegister 2 False
+        , (,,,) "copyreg"      SetsRegister 1 False
+        , (,,,) "getglobal"    SetsRegister 1 True
+        , (,,,) "hash"         SetsRegister 1 False
+        , (,,,) "loadliteral"  SetsRegister 1 True
+        , (,,,) "check_assert" HasEffect    2 True
+        , (,,,) "check"        HasEffect    2 True
+        , (,,,) "expect"       HasEffect    2 True
+        , (,,,) "println"      HasEffect    1 False
+        , (,,,) "print"        HasEffect    1 False
+        , (,,,) "printu"       HasEffect    1 False
+        , (,,,) "setglobal"    HasEffect    2 True
+        , (,,,) "if"           HasEffect    1 False
+        , (,,,) "call"         HasEffect    3 False
         ]
 
 prim :: Text -> Prim

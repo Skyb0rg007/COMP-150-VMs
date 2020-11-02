@@ -18,9 +18,6 @@ module Type.OpenADT
       OpenADT
     -- * Re-exports
     , module X
-    -- * Helpers for working with 'Sum'
-    , decompose2
-    , decompose3
     -- * Monadic recursion-schemes
     , cataM
     , anaM
@@ -59,26 +56,26 @@ hyloM :: (Monad m, Traversable f)
 hyloM f g = go where go = (f =<<) . (mapM go =<<) . g
 {-# INLINE hyloM #-}
 
--- | 'decompose' two variants at a time
-decompose2 :: forall a b r x. ('[a, b] :<: r, b :< Delete a r)
-           => Sum r x
-           -> (a :+: b :+: Sum (r \\ '[a, b])) x
-decompose2 s =
-    case decompose s of
-      L1 x -> L1 x
-      R1 s' -> R1 $
-          case decompose s' of
-            L1 x -> L1 x
-            R1 s'' -> R1 s''
-{-# INLINE decompose2 #-}
+-- -- | 'decompose' two variants at a time
+-- decompose2 :: forall a b r x. ('[a, b] :<: r, b :< Delete a r)
+           -- => Sum r x
+           -- -> (a :+: b :+: Sum (r \\ '[a, b])) x
+-- decompose2 s =
+    -- case decompose s of
+      -- L1 x -> L1 x
+      -- R1 s' -> R1 $
+          -- case decompose s' of
+            -- L1 x -> L1 x
+            -- R1 s'' -> R1 s''
+-- [># INLINE decompose2 #<]
 
 -- | 'decompose' three variants at a time
-decompose3 :: forall a b c r x. ('[a, b, c] :<: r, '[b, c] :<: Delete a r, c :< (r \\ '[a, b]))
-           => Sum r x
-           -> (a :+: b :+: c :+: Sum (r \\ '[a, b, c])) x
-decompose3 s =
-    case decompose s of
-      L1 x -> L1 x
-      R1 s' -> R1 $ decompose2 s'
-{-# INLINE decompose3 #-}
+-- decompose3 :: forall a b c r x. ('[a, b, c] :<: r, '[b, c] :<: Delete a r, c :< (r \\ '[a, b]))
+           -- => Sum r x
+           -- -> (a :+: b :+: c :+: Sum (r \\ '[a, b, c])) x
+-- decompose3 s =
+    -- case decompose s of
+      -- L1 x -> L1 x
+      -- R1 s' -> R1 $ decompose2 s'
+-- [># INLINE decompose3 #<]
 

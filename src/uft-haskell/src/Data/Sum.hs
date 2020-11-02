@@ -23,11 +23,17 @@ module Data.Sum
       Sum (Sum)
     -- * Operating on sums
     , decompose
+    , decompose2
+    , decompose3
+    , decompose4
     -- * Operating on known sums
     , decomposeFirst
-    , decomposeLast
+    , decomposeObvious
     , decomposeAbsurd
     , weaken
+    , weaken2
+    , weaken3
+    , weaken4
     -- * Miscellaneous functions
     , elemIndex
     -- * Membership
@@ -55,7 +61,7 @@ import           GHC.Exts             (Any, Proxy#, proxy#)
 import           GHC.TypeLits         (KnownNat, natVal')
 import           Unsafe.Coerce        (unsafeCoerce)
 import           GHC.Generics         (type (:+:) (..))
-import           Type.List            (Delete)
+import           Type.List            (Delete, type (\\))
 
 -- Generates:
 -- type family ElemIndex (t :: Type -> Type) (ts :: [Type -> Type]) :: Nat where
@@ -66,7 +72,7 @@ import           Type.List            (Delete)
 --   ElemIndex t4 (t0 : t1 : t2 : t3 : t4 : _) = 4
 --   etc...
 --   ElemIndex t ts = TypeError (Text "'" :<>: ShowType t :<>: Text "' is not a member of type type-level list" :$$: ShowType ts)
-mkElemIndexTypeFamily 200
+mkElemIndexTypeFamily 100
 
 -- | Sum type over a type-level list of products
 data Sum (r :: [Type -> Type]) (v :: Type) where
@@ -124,12 +130,60 @@ elemIndex (Sum' n _) = n
 decompose :: forall e es b. (e :< es)
           => Sum es b
           -> (e :+: Sum (Delete e es)) b
-decompose sum@(Sum' n v) =
+decompose (Sum' n v) =
     let n' = unP (elemNo :: P e es)
      in case compare n n' of
           EQ -> L1 (unsafeCoerce v)
           LT -> R1 (Sum' n v)
           GT -> R1 (Sum' (n - 1) v)
+
+decompose2 :: forall a b es x. ('[a, b] :<: es)
+           => Sum es x
+           -> (a :+: b :+: Sum (es \\ '[a, b])) x
+decompose2 (Sum' n v) =
+    let a = unP (elemNo :: P a es)
+        b = unP (elemNo :: P b es)
+     in case (compare n a, compare n b) of
+          (EQ, _) -> L1 (unsafeCoerce v :: a x)
+          (_, EQ) -> R1 (L1 (unsafeCoerce v :: b x))
+          (x, y)  ->
+              let offset GT = 1
+                  offset _  = 0
+               in R1 (R1 (Sum' (n - offset x - offset y) v))
+
+decompose3 :: forall a b c es x. ('[a, b, c] :<: es)
+           => Sum es x
+           -> (a :+: b :+: c :+: Sum (es \\ '[a, b, c])) x
+decompose3 (Sum' n v) =
+    let a = unP (elemNo :: P a es)
+        b = unP (elemNo :: P b es)
+        c = unP (elemNo :: P c es)
+     in case (compare n a, compare n b, compare n c) of
+          (EQ, _, _) -> L1 (unsafeCoerce v :: a x)
+          (_, EQ, _) -> R1 (L1 (unsafeCoerce v :: b x))
+          (_, _, EQ) -> R1 (R1 (L1 (unsafeCoerce v :: c x)))
+          (x, y, z)  ->
+              let offset GT = 1
+                  offset _  = 0
+               in R1 (R1 (R1 (Sum' (n - offset x - offset y - offset z) v)))
+
+decompose4 :: forall a b c d es x. ('[a, b, c, d] :<: es)
+           => Sum es x
+           -> (a :+: b :+: c :+: d :+: Sum (es \\ '[a, b, c, d])) x
+decompose4 (Sum' n v) =
+    let a = unP (elemNo :: P a es)
+        b = unP (elemNo :: P b es)
+        c = unP (elemNo :: P c es)
+        d = unP (elemNo :: P d es)
+     in case (compare n a, compare n b, compare n c, compare n d) of
+          (EQ, _, _, _) -> L1 (unsafeCoerce v :: a x)
+          (_, EQ, _, _) -> R1 (L1 (unsafeCoerce v :: b x))
+          (_, _, EQ, _) -> R1 (R1 (L1 (unsafeCoerce v :: c x)))
+          (_, _, _, EQ) -> R1 (R1 (R1 (L1 (unsafeCoerce v :: d x))))
+          (x, y, z, zz) ->
+              let offset GT = 1
+                  offset _  = 0
+               in R1 (R1 (R1 (R1 (Sum' (n - offset x - offset y - offset z - offset zz) v))))
 
 -- | Pattern-match on the first type in the 'Sum'
 decomposeFirst :: Sum (e : es) b -> (e :+: Sum es) b
@@ -140,11 +194,11 @@ decomposeFirst sum@(Sum' n v) =
 {-# INLINE decomposeFirst #-}
 
 -- | A 'Sum' type with only one variant must be that variant
-decomposeLast :: Sum '[e] b -> e b
-decomposeLast (Sum' _ v) = unsafeCoerce v
-{-# INLINE decomposeLast #-}
+decomposeObvious :: Sum '[e] b -> e b
+decomposeObvious (Sum' _ v) = unsafeCoerce v
+{-# INLINE decomposeObvious #-}
 
--- | A 'Sum' type with no variants is isomorphic to 'Data.Void.Void'
+-- | A 'Sum' type with no variants should be impossible to construct
 decomposeAbsurd :: Sum '[] b -> a
 decomposeAbsurd (Sum' _ _) = error "Data.Sum.decomposeAbsurd: empty variant!"
 
@@ -152,6 +206,18 @@ decomposeAbsurd (Sum' _ _) = error "Data.Sum.decomposeAbsurd: empty variant!"
 weaken :: Sum r v -> Sum (any : r) v
 weaken (Sum' n x) = Sum' (n + 1) x
 {-# INLINE weaken #-}
+
+weaken2 :: Sum r v -> Sum (any1 : any2 : r) v
+weaken2 (Sum' n x) = Sum' (n + 2) x
+{-# INLINE weaken2 #-}
+
+weaken3 :: Sum r v -> Sum (any1 : any2 : any3 : r) v
+weaken3 (Sum' n x) = Sum' (n + 3) x
+{-# INLINE weaken3 #-}
+
+weaken4 :: Sum r v -> Sum (any1 : any2 : any3 : any4 : r) v
+weaken4 (Sum' n x) = Sum' (n + 4) x
+{-# INLINE weaken4 #-}
 
 class Apply (c :: (Type -> Type) -> Constraint) (fs :: [Type -> Type]) where
     apply :: (forall g. c g => g a -> b) -> Sum fs a -> b
@@ -194,7 +260,7 @@ apply2' f u@(Sum' n1 _) (Sum' n2 r2)
 -- instance (c f0, c f1)       => Apply c '[f0, f1] where apply = ...
 -- instance (c f0, c f1, c f2) => Apply c '[f0, f1, f2] where apply = ...
 -- ...
-pure (mkApplyInstance <$> [1 .. 200])
+pure (mkApplyInstance <$> [1 .. 100])
 
 instance Apply Foldable fs => Foldable (Sum fs) where
     foldMap f = apply @Foldable (foldMap f)

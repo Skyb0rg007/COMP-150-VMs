@@ -27,6 +27,7 @@ module Uft.Scheme.Disambiguate
     , pattern ExpSetGlobal
     ) where
 
+import           Control.Monad        (when)
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Data.Deriving
@@ -35,10 +36,12 @@ import           Data.Functor         ((<&>))
 import           Data.HashSet         (HashSet)
 import qualified Data.HashSet         as HashSet
 import           Data.Kind
+import           Data.Maybe           (isJust)
 import           Data.Text            (Text)
 import           Type.OpenADT
 import           Type.OpenADT.TH
 import           Uft.Pretty
+import           Uft.Primitives
 import           Uft.Scheme.Ast
 import           Uft.Util
 
@@ -57,8 +60,20 @@ newtype ExpGetGlobalF (a :: Type) = ExpGetGlobalF' Text
 derive [deriveOpenADT, deriveEq1, deriveOrd1, deriveShow1, deriveRead1]
     [''ExpSetLocalF, ''ExpGetLocalF,''ExpSetGlobalF, ''ExpGetGlobalF]
 
+instance Pretty name => PrettyF (ExpSetLocalF name) where
+    prettyF' (ExpSetLocalF' x e) = parens $ "set-local" <+> pretty x <+> e
+instance Pretty name => PrettyF (ExpGetLocalF name) where
+    prettyF' (ExpGetLocalF' x) = parens $ "get-local" <+> pretty x
+instance PrettyF ExpSetGlobalF where
+    prettyF' (ExpSetGlobalF' x e) = parens $ "set-global" <+> pretty x <+> e
+instance PrettyF ExpGetGlobalF where
+    prettyF' (ExpGetGlobalF' x) = parens $ "get-global" <+> pretty x
+
+--
 class Functor f => Disambiguate f where
-    disambiguate' :: MonadReader (HashSet Text) m => f (m a) -> m (f a)
+    disambiguate' :: (MonadReader (HashSet Text) m, MonadError Text m)
+                  => f (m a)
+                  -> m (f a)
 
 instance (Apply Functor fs, Apply Disambiguate fs) => Disambiguate (Sum fs) where
     disambiguate' = apply' @Disambiguate (\r -> fmap r . disambiguate')
@@ -68,6 +83,8 @@ instance {-# OVERLAPPABLE #-} (Functor f, Traversable f) => Disambiguate f where
 
 instance Disambiguate ExpLetF where
     disambiguate' (ExpLetF' binds body) = do
+        when (any isJust (parsePrim . fst <$> binds)) $
+            throwError "Attempt to let-bind a primitive"
         let names = hashSetFromFoldable (fst <$> binds)
         binds' <- traverse sequence binds
         ExpLetF' binds' <$> local (HashSet.union names) body
@@ -83,7 +100,6 @@ disambiguate
         ( new ~ '[ExpSetGlobalF, ExpGetGlobalF, ExpSetLocalF Text, ExpGetLocalF Text]
         , old ~ '[ExpSetF, ExpVarF]
         , old :<: r
-        , ExpVarF :< Delete ExpSetF r
         , Apply Functor r
         , Applies '[Functor, Disambiguate] (new ++ (r \\ old))
         , MonadError Text m
@@ -105,5 +121,4 @@ disambiguate e = cata alg e `runReaderT` HashSet.empty where
                 False -> ExpGetGlobal x
                 True  -> ExpGetLocal x
           R1 (R1 x') -> Fix <$> disambiguate' (weaken4 x')
-    weaken4 = weaken . weaken . weaken . weaken
 

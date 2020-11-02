@@ -45,19 +45,22 @@ instance PrettyF LitPairF where
     prettyF' (LitPairF' a b) = "(" <> a <+> "." <+> b <> ")"
 
 listExpand
-    :: forall r.
-        ( Apply Functor r
-        , '[LitListF, LitDotListF] :<: r
-        , LitDotListF :< Delete LitListF r
+    :: forall r new old.
+        ( old ~ '[LitListF, LitDotListF, LitUnquoteF, LitUnquoteSplicingF]
+        , new ~ '[LitEmptyF, LitPairF]
+        , old :<: r
+        , Apply Functor r
         )
     => OpenADT r
-    -> OpenADT ('[LitEmptyF, LitPairF] ++ (r \\ '[LitListF, LitDotListF]))
+    -> OpenADT (new ++ (r \\ old))
 listExpand = cata alg where
-    alg :: Sum r (OpenADT ('[LitEmptyF, LitPairF] ++ (r \\ '[LitListF, LitDotListF])))
-        -> OpenADT ('[LitEmptyF, LitPairF] ++ (r \\ '[LitListF, LitDotListF]))
+    alg :: Sum r (OpenADT (new ++ (r \\ old)))
+        -> OpenADT (new ++ (r \\ old))
     alg x =
-        case decompose2 x of
-          L1 (LitListF' xs)           -> foldr LitPair LitEmpty xs
-          R1 (L1 (LitDotListF' xs x)) -> foldr LitPair x xs
-          R1 (R1 x')                  -> Fix $ weaken $ weaken x'
+        case decompose4 x of
+          L1 (LitListF' xs)                        -> foldr LitPair LitEmpty xs
+          R1 (L1 (LitDotListF' xs x))              -> foldr LitPair x xs
+          R1 (R1 (L1 LitUnquoteF'{}))              -> undefined
+          R1 (R1 (R1 (L1 LitUnquoteSplicingF'{}))) -> undefined
+          R1 (R1 (R1 (R1 x')))                     -> Fix $ weaken2 x'
 

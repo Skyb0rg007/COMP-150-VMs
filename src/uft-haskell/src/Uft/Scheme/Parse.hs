@@ -347,17 +347,16 @@ schemeDatum = schemeDatum' 0
             xs <- many schemeDatum
             void $ symbol ")"
             pure $ LitVector (Vector.fromList xs)
-        schemeAbbrev quasiLevel = do
-            (prefix, prefixFun, f) <- abbrevPrefix
+        schemeAbbrev _ = do
+            prefix <- abbrevPrefix
             datum <- schemeDatum
-            pure $ LitList $ Vector.fromList [LitSym prefix, datum]
+            pure $ tuple prefix datum
         tuple name datum = LitList (Vector.fromList [LitSym name, datum])
-        abbrevPrefix :: P (Text, OpenADT ParseProgRows -> OpenADT ParseProgRows, Int -> Int)
         abbrevPrefix =
-                ("quote", tuple "quote", id)                         <$ char '\''
-            <|> ("quasiquote", tuple "quasiquote", (+1))             <$ char '`'
-            <|> ("unquote-splicing", LitUnquoteSplicing, subtract 1) <$ string ",@"
-            <|> ("unquote", LitUnquote, subtract 1)                  <$ char ','
+                "quote"            <$ char '\''
+            <|> "quasiquote"       <$ char '`'
+            <|> "unquote-splicing" <$ string ",@"
+            <|> "unquote"          <$ char ','
 
 betweenParens :: P a -> P a
 betweenParens p = (symbol "(" *> p <* symbol ")")
