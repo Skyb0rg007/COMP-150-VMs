@@ -2,13 +2,33 @@ COMP 150VM: Practice for the Course Finale
 
 What group is reporting this finale practice?
 
-  - 
+  - Skye Soss, Geoff Hudson, Mert Erden
 
 What feature did you choose?
 
-  - 
+  - Pattern-matching
 
 What is your implementation plan?  Include answers to any questions
 you addressed during lab.
 
-  -
+  A. No. We add a new datatype as well.
+
+  B. Erlang pattern-matching can be implemented as a syntax translation,
+     converting patterns using the same variable twice into patterns with
+     different variables, generating a guard pattern that asserts the
+     variables are equal.
+
+  C. The new feature can mostly be handled in the UFT.
+     We propose to introduce four svm instructions:
+     `con-new`, `con-id`, `con-get-at`, `con-set-at`.
+
+  E. Everything down to (and including) knormal form.
+
+  F. We plan on adding translation passes after the disambiguate pass
+
+  I.
+    1. Convert to guard lists
+    2. Re-order guard lists and normalize variable naming
+    3. Create decision tree
+    4. Generate code
+
