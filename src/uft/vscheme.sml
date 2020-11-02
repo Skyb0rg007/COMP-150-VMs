@@ -101,7 +101,7 @@ struct
   fun nth 0 e = car e
     | nth k e = nth (k-1) (cdr e)
 
-  fun list [] = S.LITERAL (S.EMPTYLIST)
+  fun list [] = S.LITERAL S.EMPTYLIST
     | list (e::es) = cons e (list es)
 
 end

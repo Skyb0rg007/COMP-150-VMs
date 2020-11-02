@@ -18,9 +18,9 @@
 void printasm(FILE *fp, VMState vm, Instruction i);
 
 void idump(FILE *fp, VMState vm, int pc, Instruction I, 
-//@ module >= 7
-           long int regbase,
-//@ true
+           long int regbase, // A way to communicate where the current 
+                             // register window R is pointing.  The number
+                             // is printed, but `idump` doesn't compute with it
            Value *RX, Value *RY, Value *RZ);
 
 

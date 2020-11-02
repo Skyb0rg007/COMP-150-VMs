@@ -46,6 +46,7 @@ group is
 
   pp.cm              (* vscheme prettyprinter, with infrastructure; given to students *)
   wpp.cm             (* [prettyprinter used to disambiguate check-expect] *)
+  ppwrapper.sml
   wppscheme.sml
 
   disambiguate.sml  (* vscheme disambiguation; completed by students *)

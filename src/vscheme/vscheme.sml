@@ -1395,6 +1395,50 @@ val _ = op bindings  : (name * exp) list parser
         end
        )
      (* rows added to ML \uscheme's [[exptable]] in exercises S218d *)
+, ("(&& e1 ... en)",
+    let fun andSugar [] = LITERAL (BOOLV true)
+          | andSugar [e] = e
+          | andSugar (e::es) = IFX (e, andSugar es, LITERAL (BOOLV false))
+    in  andSugar <$> many exp
+    end
+  )
+
+, ("(|| e1 ... en)",
+    let fun freeIn exp y =
+          let fun member y [] = false
+                | member y (z::zs) = y = z orelse member y zs
+              fun has_y (LITERAL _) = false
+                | has_y (VAR x) = x = y
+                | has_y (SET (x, e)) = x = y orelse has_y e
+                | has_y (IFX (e1, e2, e3))  = List.exists has_y [e1, e2, e3]
+                | has_y (WHILEX (e1, e2))   = List.exists has_y [e1, e2]
+                | has_y (BEGIN es)          = List.exists has_y es
+                | has_y (APPLY (e, es))     = List.exists has_y (e::es)
+                | has_y (LETX (LET, bs, e)) = List.exists rhs_has_y bs orelse
+                                              (not (member y (map fst bs))
+                                              andalso has_y e)
+                | has_y (LETX (LETSTAR, [], e)) = has_y e
+                | has_y (LETX (LETSTAR, b::bs, e)) =
+                    has_y (LETX (LET, [b], LETX(LETSTAR, bs, e)))
+                | has_y (LETX (LETREC, bs, e)) =
+                    not (member y (map fst bs)) andalso has_y e
+                | has_y (LAMBDA (xs, e)) = not (member y xs) andalso has_y e
+              and rhs_has_y (_, e) = has_y e
+          in  has_y exp
+          end
+
+        fun orSugar [] = LITERAL (BOOLV false)
+          | orSugar [e] = e
+          | orSugar (e1::es) =
+              let val e2 = orSugar es
+                  val x_n's = streamMap (fn n => "x" ^ intString n) naturals
+                  val xs = streamFilter (not o freeIn e2) x_n's
+                  val (x, _)  = valOf (streamGet xs)
+              in  LETX (LET, [(x, e1)], IFX (VAR x, VAR x, e2))
+              end
+    in  orSugar <$> many exp
+    end
+  )
      (* add syntactic sugar here, each row preceded by a comma *)
      ]
   end
@@ -1598,6 +1642,8 @@ fun eval (e, rho) =
         | ev (e as APPLY (f, args)) = 
                (case ev f
                   of PRIMITIVE prim => prim (e, map ev args)
+                   | closure as PAIR (f as CLOSURE _, _) =>
+                       ev (APPLY (LITERAL f, LITERAL closure :: args))
                    | CLOSURE clo    =>
                        (* apply closure [[clo]] to [[args]] ((mlscheme)) 309a *)
                                        let val ((formals, body), savedrho) = clo

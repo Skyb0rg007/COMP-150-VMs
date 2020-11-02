@@ -107,9 +107,7 @@ static OperandSet operands(Instruction i) {
 
 
 void idump(FILE *fp, VMState vm, int pc, Instruction I,
-//@ module >= 7
            long int regbase,
-//@ true
            Value *RX, Value *RY, Value *RZ) {
     OperandSet used = operands(I);
     fprintf(fp, "%60s", "");
@@ -117,11 +115,7 @@ void idump(FILE *fp, VMState vm, int pc, Instruction I,
     if (used & has_uY) { assert(RY); fprint(fp, "  r%d = %V", uY(I), *RY); }
     if (used & has_uZ) { assert(RZ); fprint(fp, "  r%d = %V", uZ(I), *RZ); }
     system("tput cr setaf 1");
-//@ module >= 7
     fprintf(fp, "[%3d @ $r%-3ld] ", pc, regbase);
-//@ module < 7
-    (void) regbase;
-//@ true
     system("tput setaf 5");
     printasm(fp, vm, I);
     system("tput op");

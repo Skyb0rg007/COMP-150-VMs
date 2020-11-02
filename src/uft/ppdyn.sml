@@ -151,12 +151,20 @@ functor PPDynamicFun(Cost:PP_COST) : PP_DYNAMIC = struct
             | emit INITIAL = 0
       in  emit (PREV answer)
       end
-    fun standardEmitLine stream (n, l) =
+    fun hoEmit consume acc (n, ss) =
+      let fun extend 0 ss = ss
+            | extend n ss = extend (n - 1) (" " :: ss)
+          val line = if n >= 0 then extend n ss
+                     else "((pp error: negative indent))" :: ss
+      in  acc := consume (String.concat ss, !acc)
+      end
+
+    fun standardEmitLine stream (n, ss) =
       let fun puts s = TextIO.output(stream, s)
-          fun emit(0, l) = (List.app puts l; puts "\n")
-            | emit(n, l) = (puts " "; emit(n-1, l))
-      in  if n >= 0 then emit(n, l)
-          else (puts "((pp error: negative indent))"; emit(0, l))
+          fun emit(0, ss) = (List.app puts ss; puts "\n")
+            | emit(n, ss) = (puts " "; emit(n-1, ss))
+      in  if n >= 0 then emit(n, ss)
+          else (puts "((pp error: negative indent))"; emit(0, ss))
       end
   end
 end

@@ -3,20 +3,26 @@
 (* You can ignore this *)
 
 structure WppScheme :> sig
-  val pp    : VScheme.def -> Wpp.doc
-  val ppexp : VScheme.exp -> Wpp.doc
+  val pp    : VScheme.def -> Wppx.doc
+  val ppexp : VScheme.exp -> Wppx.doc
   val expString : VScheme.exp -> string  (* for use with check and expect *)
 end
   =
 struct
   structure S = VScheme
-  structure P = Wpp
+  structure P = Wppx
 
-  val ++ = Wpp.^^
+  val ++ = Wppx.^^
   infix 7 ++
+
+  infixr 0 $
+  fun f $ x = f x
 
   val nest = P.nest
   val te = P.text
+  val cn = te " " ++ P.Line.connected
+  val nl = P.Line.forced
+  val on = te " " ++ P.Line.optional
 
   fun id x = x
 
@@ -28,22 +34,38 @@ struct
     | value (S.BOOLV b) = P.text (if b then "#t" else "#f")
     | value (S.EMPTYLIST)     = P.text "()"
     | value (S.PAIR (car, cdr))  = 
-        P.group (P.text "(" ++ P.seq P.line id (values (S.PAIR (car, cdr))) ++ P.text ")")
+        P.group (P.text "(" ++ P.seq cn id (values (S.PAIR (car, cdr))) ++ P.text ")")
   and values (S.EMPTYLIST) = []
     | values (S.PAIR (car, cdr)) = value car :: values cdr
     | values v = [P.text ".", value v]
 
-  fun wrap  docs = P.group (te "(" ++ P.seq P.line id docs ++ te ")")
-  fun wraps docs = P.group (te "[" ++ P.seq P.line id docs ++ te "]")
-  fun kw k docs = wrap (te k :: docs)
+  val line = te "<line>"
+  val linew = te "<linew>"
+  val lines = te "<lines>"
+  val linek = te "<linek>"
+
+  val line = on
+  val linew = on
+  val lines = on
+  val linek = on
+
+  fun bracket docs = P.group (te "(" ++ P.concat docs ++ te ")")
+  fun square  docs = P.group (te "[" ++ P.concat docs ++ te "]")
+  fun wrap  docs = P.group (te "(" ++ P.seq linew id docs ++ te ")")
+  fun wraps docs = P.group (te "[" ++ P.seq lines id docs ++ te "]")
+  fun kw k docs = P.group (te "(" ++ te k ++ te " " ++ P.seq cn id docs ++ te ")")
 
   fun exp e =
      let
          fun pplet thekw bs e =
            let val i = size thekw + 3
-               fun binding (x, e) = wraps [te x, exp e]
-               val bindings = P.seq P.line binding bs
-           in  nest i (kw thekw [wrap [bindings], exp e])
+               fun binding (x, e) =
+                 let val indent = Int.min (size x + 2, 6)
+                 in  square [te x, P.group (P.nest indent (on ++ exp e))]
+                 end
+               val bindings = P.nest 0 (P.seq nl binding bs)
+           in  nest i (te "(" ++ te thekw ++ te " " ++ wrap [bindings] ++
+                          nest (2 - i) (cn ++ exp e ++ te ")"))
            end
 
          fun nestedBindings (prefix', S.LETX (S.LET, [(x, e')], e)) =
@@ -62,7 +84,7 @@ struct
             | S.WHILEX (e1, e2) =>
                 nest 3 (kw "while" (map exp [e1, e2]))
             | S.BEGIN es => 
-                nest 3 (kw "begin" (map exp es))
+                nest 3 $ bracket [te "begin", cn, P.seq cn exp es]
             | S.APPLY (e, es) => 
                 nest 3 (wrap (map exp (e::es)))
             | S.LETX (S.LET, bs as [(x, e')], e) =>
@@ -74,7 +96,7 @@ struct
                 end
             | S.LETX (lk, bs, e) => 
                 let fun binding (x, e) = wraps [te x, exp e]
-                    val bindings = P.seq P.line binding bs
+                    val bindings = P.seq on binding bs
                 in  nest 3 (kw (letkeyword lk) [wrap [bindings], exp e])
                 end
             | S.LAMBDA (xs, body) =>
@@ -104,7 +126,7 @@ struct
       of #"\n" :: cs => implode (rev cs)
        | _ => s
   
-  val expString = stripFinalNewline o Wpp.toString 60 o ppexp
+  val expString = stripFinalNewline o Wppx.toString 60 o ppexp
 
 end
 

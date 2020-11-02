@@ -37,10 +37,10 @@ struct
   (**** Reader functions ****)
 
   val schemeOfFile : instream -> VScheme.def list error =
-    lines                             (* line list *)
-    >>>  SxParse.parse                (* sx list error *)
-    >=>  liftMap VSchemeParsers.defs  (* def list list error *)
-    >>>  Error.map List.concat        (* def list error *)
+    lines                                   (* line list *)
+    >>>  SxParse.parse                      (* sx list error *)
+    >=>  Error.mapList VSchemeParsers.defs  (* def list list error *)
+    >>>  Error.map List.concat              (* def list error *)
     
   val schemexOfFile : instream -> UnambiguousVScheme.def list error =
     schemeOfFile >>>
@@ -90,7 +90,7 @@ struct
   fun emitVO outfile = app (outln outfile) o ObjectUnparser.module
   fun emitVS outfile = app (outln outfile) o AsmParse.unparse
 
-  fun emitScheme outfile = Wpp.toOutStream width outfile o WppScheme.pp
+  fun emitScheme outfile = Wppx.toOutStream width outfile o WppScheme.pp
 
   fun emitHO outfile = app (emitScheme outfile o Disambiguate.ambiguate)
 

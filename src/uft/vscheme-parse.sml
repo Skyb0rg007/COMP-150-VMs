@@ -82,6 +82,45 @@ struct
   fun bracket word parser =
     oflist (kw word >> (parser <~> P.eos <|> P.perror ("Bad " ^ word ^ " form")))
 
+  fun freeIn exp y =
+    let fun member y [] = false
+          | member y (z::zs) = y = z orelse member y zs
+        fun has_y (S.LITERAL _) = false
+          | has_y (S.VAR x) = x = y
+          | has_y (S.SET (x, e)) = x = y orelse has_y e
+          | has_y (S.IFX (e1, e2, e3))  = List.exists has_y [e1, e2, e3]
+          | has_y (S.WHILEX (e1, e2))   = List.exists has_y [e1, e2]
+          | has_y (S.BEGIN es)          = List.exists has_y es
+          | has_y (S.APPLY (e, es))     = List.exists has_y (e::es)
+          | has_y (S.LETX (S.LET, bs, e)) = List.exists rhs_has_y bs orelse
+                                        (not (member y (map fst bs))
+                                        andalso has_y e)
+          | has_y (S.LETX (S.LETREC, bs, e)) =
+              not (member y (map fst bs)) andalso has_y e
+          | has_y (S.LAMBDA (xs, e)) = not (member y xs) andalso has_y e
+        and rhs_has_y (_, e) = has_y e
+    in  has_y exp
+    end
+
+  fun fresh e =
+    let fun try n = let val x = "x" ^ Int.toString n
+                    in  if freeIn e x then try (n + 1) else x
+                    end
+    in  try 1
+    end
+
+  fun andSugar [] = S.LITERAL (S.BOOLV true)
+    | andSugar [e] = e
+    | andSugar (e::es) = S.IFX (e, andSugar es, S.LITERAL (S.BOOLV false))
+
+  fun orSugar [] = S.LITERAL (S.BOOLV false)
+    | orSugar [e] = e
+    | orSugar (e1::es) =
+        let val e2 = orSugar es
+            val x = fresh e2
+        in  S.LETX (S.LET, [(x, e1)], S.IFX (S.VAR x, S.VAR x, e2))
+        end
+
   val exp = P.fix' (fn expref =>
     let val exp = P.!! expref
         fun pair x y = (x, y)
@@ -98,6 +137,8 @@ struct
        <|> bracket "letrec"    (letx S.LETREC <$> bindings <*> exp)
        <|> bracket "quote"     (      (S.LITERAL o sexp) <$> one)
        <|> bracket "lambda"    (curry S.LAMBDA <$> oflist (many name) <*> exp) 
+       <|> bracket "||"        (orSugar <$> many exp) 
+       <|> bracket "&&"        (andSugar <$> many exp) 
        <|> oflist eos >> P.perror "empty list as Scheme expression"
        <|> S.LITERAL <$> (    kw "#t" >> P.succeed (S.BOOLV true)
                           <|> kw "#f" >> P.succeed (S.BOOLV false)

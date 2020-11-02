@@ -23,6 +23,7 @@ struct
   type 'a hughes_list = 'a list -> 'a list
     (* append these lists using `o` *)
 
+  (* don't look at these implementations; look at the types below! *)
   fun empty tail = tail
   fun S e  tail = e :: tail
   fun L es tail = es @ tail

@@ -14,4 +14,5 @@ signature PP_DYNAMIC = sig
   type syncher = emitter * int -> int
   val set : emitter * syncher * int -> PPNormal.normal -> int
   val standardEmitLine : TextIO.outstream -> int * string list -> unit
+  val hoEmit : (string * 'a -> 'a) -> 'a ref -> int * string list -> unit
 end

@@ -120,7 +120,8 @@ struct
   fun p1 === p2 = (fn tokens => p1 tokens = p2 tokens)
 
 
-  fun maybe_sat_law f p = (maybe f p === valOf <$> sat isSome p)
+  fun maybe_sat_law f p =
+        maybe f p === valOf <$> sat isSome p
 
   fun demo showToken =
     let

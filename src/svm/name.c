@@ -44,7 +44,7 @@ static Tptr insertl(const char *name, int len) {
     const char *s = name;
     Tptr *np = &root;
     int origlen = len;
-    Tptr thisnode;
+    Tptr thisnode = NULL;
     while (len >= 0) {
       char c = len == 0 ? '\0' : *s;
       assert (len == 0 || c != 0);  // needed to overload eqkid
