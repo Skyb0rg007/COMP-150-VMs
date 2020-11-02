@@ -7,25 +7,76 @@ module Main where
 -- import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Except
+import           Data.HashMap.Strict       (HashMap)
+import qualified Data.HashMap.Strict       as HashMap
 import           Data.Kind
 import           Data.Loc
-import           Data.Proxy                   (Proxy (..))
-import           Data.Singletons.Prelude.List
-import           Data.String.Conversions      (convertString)
-import           Data.Text                    (Text)
-import qualified Data.Text                    as Text
-import qualified Data.Text.IO                 as Text.IO
+import           Data.Proxy                (Proxy (..))
+import           Data.String.Conversions   (convertString)
+import           Data.Text                 (Text)
+import qualified Data.Text                 as Text
+import qualified Data.Text.IO              as Text.IO
 import           Data.Text.Prettyprint.Doc
-import           GHC.TypeLits                 (Symbol)
-import           System.Environment           (getArgs)
+import           GHC.TypeLits              (Symbol)
+import           System.Environment        (getArgs)
 import           System.Exit
--- import qualified Uft.Scheme.Ast               as Scheme
--- import           Uft.Scheme.Disambiguate      ()
--- import           Uft.Scheme.Parse             ()
--- import           Uft.Transform
--- import qualified Uft.UnambiguousScheme.Ast    as Unamb
+import           Type.OpenADT
+import           Uft.Pretty
+import           Uft.Scheme.Ast
+import           Uft.Scheme.ConvertPrim
+import           Uft.Scheme.Disambiguate
+import           Uft.Scheme.LetStarElim
+import           Uft.Scheme.ListExpand
+import           Uft.Scheme.Parse
 
-main = pure ()
+usage :: IO a
+usage = do
+    putStrLn "Usage: uft <in>-<out> <file>"
+    exitFailure
+
+main :: IO ()
+main = do
+    args :: [String] <- getArgs
+    (pipelineName :: Text, fileName :: FilePath) <-
+        case args of
+          [a, b] -> pure (Text.pack a, b)
+          _ -> usage
+    pipeline <-
+        case HashMap.lookup pipelineName pipelines of
+          Nothing -> usage
+          Just x  -> pure x
+    fileContent :: Text <- Text.IO.readFile fileName
+    res <- runExceptT $ pipeline fileName fileContent
+    case res of
+      Left err -> Text.IO.putStrLn err
+      Right () -> pure ()
+
+type Pipeline =
+    forall m. (MonadIO m, MonadError Text m)
+  => FilePath
+  -> Text
+  -> m ()
+
+pipelines :: (MonadIO m, MonadError Text m)
+          => HashMap Text (FilePath -> Text -> m ())
+pipelines = HashMap.fromList
+    [ ("vs-vs", schemeToScheme)
+    ]
+
+-- type SchemeProg  = (LitListF : LitDotListF : SchemeProg1)
+-- type SchemeProg1 = (ParseProgRows ++ '[LitEmptyF, LitPairF]) \\ '[LitListF, LitDotListF]
+schemeToScheme :: Pipeline
+schemeToScheme fileName fileContent = do
+    scheme <- parseScheme fileName fileContent
+    let scheme' = listExpand scheme
+    liftIO . print . prettyF $ scheme'
+    liftIO . print $ scheme'
+
+-- schemeToUnamb :: Pipeline
+-- schemeToUnamb fileName fileContent = do
+    -- scheme <- parseScheme @(StmtRows (ExpRows LitRows)) @(ExpRows LitRows) @LitRows
+        -- fileName fileContent
+    -- liftIO $ sequence_ $ map (print . prettyF) scheme
 
 -- fileToScheme :: (FilePath, Text) -> Either Text Scheme.Prog
 -- fileToScheme = transform @"parseScheme"

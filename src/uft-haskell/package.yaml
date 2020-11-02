@@ -49,7 +49,7 @@ dependencies:
 - unordered-containers
 - vector
 - bifunctors
-- fastsum
+# - fastsum
 # - row-types
 # - souffle-haskell
 

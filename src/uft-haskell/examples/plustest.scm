@@ -2,3 +2,5 @@
   (check r0 'two-plus-two))
 (let* ([r0 5])
   (expect r0 'five))
+
+'(foo bar baz)

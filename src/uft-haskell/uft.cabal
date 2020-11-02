@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d17566ba395d24f6ab30f642f032ca7a3d48e443944ebbf5e8fb9db1cfba3863
+-- hash: 27554a10e0fb2a7b25fd93c980dd2b58db8ee714b367194879dbcedc1f08d8c2
 
 name:           uft
 version:        0.1.0.0
@@ -26,8 +26,20 @@ source-repository head
 
 library
   exposed-modules:
+      Data.Sum
+      Data.Sum.TH
+      Type.List
       Type.OpenADT
+      Type.OpenADT.TH
+      Uft.Pretty
+      Uft.Primitives
       Uft.Scheme.Ast
+      Uft.Scheme.ConvertPrim
+      Uft.Scheme.Disambiguate
+      Uft.Scheme.LetStarElim
+      Uft.Scheme.ListExpand
+      Uft.Scheme.Parse
+      Uft.Util
   other-modules:
       Paths_uft
   hs-source-dirs:
@@ -49,7 +61,6 @@ library
     , deepseq
     , deriving-compat
     , dlist
-    , fastsum
     , generic-data
     , hashable
     , lens
@@ -91,7 +102,6 @@ executable uft-exe
     , deepseq
     , deriving-compat
     , dlist
-    , fastsum
     , generic-data
     , hashable
     , lens
@@ -140,7 +150,6 @@ test-suite uft-test
     , deepseq
     , deriving-compat
     , dlist
-    , fastsum
     , generic-data
     , hashable
     , hspec
