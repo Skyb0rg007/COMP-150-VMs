@@ -1,0 +1,30 @@
+
+1. Tail position. You can identify what expressions occur in tail position.
+
+    45 & 94. e₁ and e₂ are in tail position if the if-expression is in
+    tail position.
+
+2. Calling conventions. You understand how a call can kill registers.
+
+    I did not have time to implement this
+
+3. Undefined behavior. You have an idea how a translator can exploit undefined behavior.
+
+    42 & 43
+    This causes a compiler-error
+
+4. Totality of code generation. You know how to ensure that your translator generates code for any input—as long as there are no bugs in the compiler, code generation always succeeds.
+
+    I did not have time to implement this because my last submission was
+    incomplete as well
+
+5. Course design and compiler design. You can comment on the experience of splitting code generation across two modules.
+
+    I think keeping how it is now is the best plan, since you can
+    test without calls.
+
+6. Finale practice. You learned something about programming-language design and implementation.
+
+    I learned how coroutines are implemented using multiple VMStates, and
+    not just another datatype.
+

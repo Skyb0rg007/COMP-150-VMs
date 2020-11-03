@@ -60,7 +60,7 @@ listExpand = cata alg where
         case decompose4 x of
           L1 (LitListF' xs)                        -> foldr LitPair LitEmpty xs
           R1 (L1 (LitDotListF' xs x))              -> foldr LitPair x xs
-          R1 (R1 (L1 LitUnquoteF'{}))              -> undefined
-          R1 (R1 (R1 (L1 LitUnquoteSplicingF'{}))) -> undefined
+          R1 (R1 (L1 LitUnquoteF' {}))              -> undefined
+          R1 (R1 (R1 (L1 LitUnquoteSplicingF' {}))) -> undefined
           R1 (R1 (R1 (R1 x')))                     -> Fix $ weaken2 x'
 
