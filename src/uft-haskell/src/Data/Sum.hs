@@ -61,7 +61,7 @@ import           GHC.Exts             (Any, Proxy#, proxy#)
 import           GHC.TypeLits         (KnownNat, natVal')
 import           Unsafe.Coerce        (unsafeCoerce)
 import           GHC.Generics         (type (:+:) (..))
-import           Type.List            (Delete, type (\\))
+import           Type.List            (Delete, type (\\), type (++))
 
 -- Generates:
 -- type family ElemIndex (t :: Type -> Type) (ts :: [Type -> Type]) :: Nat where

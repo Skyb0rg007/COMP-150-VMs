@@ -53,7 +53,7 @@ newtype LitBoolF (a :: Type) = LitBoolF' Bool
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 -- | List literal: (a b c)
-newtype LitListF (a :: Type) = LitListF' (Vector a)
+newtype LitListF a = LitListF' (Vector a)
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 -- | Dotted list literal: (a b . c)
