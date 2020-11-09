@@ -97,7 +97,7 @@ static inline void *alloc_small(size_t n) {
   return object;
 }
     
-void *vmalloc(size_t n) {
+void *vmalloc_raw(size_t n) {
   if (n <= SMALL_OBJECT_LIMIT) {
     return alloc_small(n);
   } else {
@@ -108,12 +108,11 @@ void *vmalloc(size_t n) {
   }
 }
 
-void *vmcalloc(size_t num, size_t size) {
-  void *block = vmalloc(num * size);
+void *vmcalloc_raw(size_t num, size_t size) {
+  void *block = vmalloc_raw(num * size);
   memset(block, 0, num * size);
   return block;
 }
-
 
 void heap_init(void) {
   link_new_page();

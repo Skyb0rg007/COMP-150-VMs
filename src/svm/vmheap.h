@@ -24,9 +24,12 @@ extern void heap_shutdown(void);
 
 //// allocators, which never return NULL
 
-extern void *vmalloc(size_t);
-extern void *vmcalloc(size_t, size_t);
+extern void *vmalloc_raw(size_t);
+extern void *vmcalloc_raw(size_t, size_t);
    // modules 11 and 12 will add ability to recover this memory
+
+#define VMNEW(TYPE,  P, N) TYPE P = vmalloc_raw(N); GCINIT(*P)
+#define VMNEWC(TYPE, P, N) TYPE P = vmcalloc_raw(1, N); GCINIT(*P)
 
 extern bool vmalloc_islarge(size_t);
   // tells string client when not to intern

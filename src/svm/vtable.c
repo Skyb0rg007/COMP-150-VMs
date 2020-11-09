@@ -2,15 +2,18 @@
 
 // Will have to be looked at in module 12, but not until then.
 
+#include <assert.h>
 #include <limits.h>
 #include <stddef.h>
-#include <assert.h>
+#include <string.h>
 
+#include "gcmeta.h"
 #include "vtable.h"
 #include "vmheap.h"
 
 #define T VTable_T
 struct T {
+        GCMETA(T)
         int size;  // number of buckets
 	int length; // population
 	unsigned timestamp;
@@ -21,8 +24,18 @@ struct T {
 	} **buckets;
 };
 
+extern T* VTable_forwarded(T vtable) {
+  assert(vtable);
+  return &vtable->forwarded;
+}
+
+
+size_t VTable_size(int nbuckets) {
+  T table;
+  return sizeof (*table) + nbuckets * sizeof (table->buckets[0]);
+}
+
 T VTable_new(int hint) {
-	T table;
 	int i;
 	static int primes[] = { 5, 5, 11, 23, 47, 97, 197, 397, 509, 1021, 2053, 4093,
 		8191, 16381, 32771, 65521, INT_MAX };
@@ -30,7 +43,7 @@ T VTable_new(int hint) {
 	assert(hint >= 0);
 	for (i = 1; primes[i] < hint; i++)
 		;
-	table = vmalloc(sizeof (*table) + primes[i-1]*sizeof (table->buckets[0]));
+        VMNEW(T, table, VTable_size(primes[i-1]));
 	table->size = primes[i-1];
 	table->buckets = (struct binding **)(table + 1);
 	for (i = 0; i < table->size; i++)
@@ -65,7 +78,7 @@ void VTable_put(T table, Value key, Value value) {
             if (identical(key, p->key))
               break;
           if (p == NULL) {
-            p = vmalloc(sizeof(*p));
+            p = vmalloc_raw(sizeof(*p));
             p->key = key;
             p->link = table->buckets[i];
             table->buckets[i] = p;
@@ -83,21 +96,37 @@ int VTable_length(T table) {
 	assert(table);
 	return table->length;
 }
-// void VTable_map(T table,
-// 	void apply(const void *key, void **value, void *cl),
-// 	void *cl) {
-// 	int i;
-// 	unsigned stamp;
-// 	struct binding *p;
-// 	assert(table);
-// 	assert(apply);
-// 	stamp = table->timestamp;
-// 	for (i = 0; i < table->size; i++)
-// 		for (p = table->buckets[i]; p; p = p->link) {
-// 			apply(p->key, &p->value, cl);
-// 			assert(table->timestamp == stamp);
-// 		}
-// }
+
+void VTable_internal_values(T table, void visit(Value *vp)) {
+  assert(table);
+  assert(visit);
+  for (int i = 0; i < table->size; i++)
+    for (struct binding *p = table->buckets[i]; p; p = p->link) {
+      visit(&p->key);
+      visit(&p->value);
+    }
+}
+
+static struct binding *copy_chain(struct binding *p) {
+  if (p == NULL) {
+    return p;
+  } else {
+    struct binding *copy = vmalloc_raw(sizeof(*p));
+    copy->key = p->key;
+    copy->value = p->value;
+    copy->link = copy_chain(p->link);
+    return copy;
+  } 
+}
+
+T VTable_copy(T old) {
+  assert(old);
+  VMNEW(T, new, VTable_size(old->size));
+  memcpy(new, old, VTable_size(old->size));
+  for (int i = 0; i < old->size; i++)
+    new->buckets[i] = copy_chain(old->buckets[i]);
+  return new;
+}
 
 void VTable_remove(T table, Value key) {
 	int i;
@@ -143,3 +172,4 @@ void VTable_remove(T table, Value key) {
 //  	}
 //  	FREE(*table);
 //  }
+

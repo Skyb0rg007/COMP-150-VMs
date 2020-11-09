@@ -62,8 +62,11 @@ struct
         in  concat (iter xs)
         end
 
+    fun untilde #"~" = #"-"
+      | untilde c = c
+
     fun fromConv conv x = text(conv x)
-    val int   = fromConv Int.toString
+    val int   = fromConv (String.map untilde o Int.toString)
     val char  = fromConv Char.toString
     val word  = fromConv Word.toString
     val word8 = fromConv Word8.toString

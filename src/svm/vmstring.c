@@ -24,8 +24,10 @@
 typedef struct stringtable {
   int population;  /* number of strings stored */
   int nbuckets;    /* size of bucket array */
-  VMString *buckets;
+  VMString *buckets;  // linked by next_interned fields
 } stringtable;
+
+
 
 static inline size_t stepsize(size_t len) {
   // rate at which we scan characters in strings
@@ -84,6 +86,8 @@ uint32_t Vmstring_hashlong(VMString hs) {
 
 static struct stringtable tb; // the table
 
+
+
 static void resize(int newsize) {
   if (newsize > tb.nbuckets) {  /* grow table if needed */
     tb.buckets = realloc(tb.buckets, newsize * sizeof(tb.buckets[0]));
@@ -127,9 +131,7 @@ void Vmstring_finish (void) {
 
 static VMString allocstring(size_t len, uint32_t hash) {
   // initializes everything except the bytes -- even the terminating '\0'
-  VMString hs;
-  size_t totalsize = Vmstring_objsize(len);
-  hs = vmalloc(totalsize);
+  VMNEW(VMString, hs, Vmstring_objsize(len));
   hs->length = len;
   hs->hash = hash;
   hs->next_interned = NULL;

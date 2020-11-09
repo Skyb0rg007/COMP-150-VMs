@@ -66,10 +66,6 @@ struct
   val ! = Error.map  (* useful abbreviation for materializers and `translate` *)
 
 
-  fun HO_of HO   = schemexOfFile
-    | HO_of HOX  = Impossible.unimp "imperative features (HOX to HO)"
-    | HO_of _    = raise Backward
-
   fun VS_of VS   = VS_of_file
     | VS_of inLang = raise NoTranslationTo VS
   fun VO_of VO     = (fn _ => Error.ERROR "There is no reader for .vo")
@@ -105,7 +101,6 @@ struct
     (case outLang
        of VO => VO_of      inLang >>> ! (emitVO outfile)
         | VS => VS_of      inLang >>> ! (emitVS outfile)
-        | HO => HO_of      inLang >>> ! (emitHO outfile)
         | _  => raise NoTranslationTo outLang
     ) infile
     handle Backward => raise NotForward (inLang, outLang)

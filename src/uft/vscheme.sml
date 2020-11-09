@@ -86,6 +86,7 @@ structure VSchemeUtils : sig
   val cons : exp -> exp -> exp
   val list : exp list -> exp
   val nth : int -> exp -> exp
+  val setnth : exp -> int -> exp -> exp
 
 end
   =
@@ -104,4 +105,6 @@ struct
   fun list [] = S.LITERAL S.EMPTYLIST
     | list (e::es) = cons e (list es)
 
+  fun setnth e 0 v = S.APPLY (S.VAR "set-car!", [e, v])
+    | setnth e k v = setnth (cdr e) (k - 1) v
 end

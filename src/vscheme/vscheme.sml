@@ -1116,7 +1116,7 @@ and    value = SYM       of name
              | BOOLV     of bool   
              | NIL
              | LUANIL
-             | PAIR      of value * value
+             | PAIR      of value ref * value
              | CLOSURE   of lambda * value ref env
              | PRIMITIVE of primitive
 withtype primitive = exp * value list -> value (* raises RuntimeError *)
@@ -1141,16 +1141,16 @@ fun valueString (SYM v)   = v
   | valueString (BOOLV b) = if b then "#t" else "#f"
   | valueString (NIL)     = "()"
   | valueString (LUANIL)     = "nil"
-  | valueString (PAIR (car, cdr))  = 
-      let fun tail (PAIR (car, cdr)) = " " ^ valueString car ^ tail cdr
+  | valueString (PAIR (ref car, cdr))  = 
+      let fun tail (PAIR (ref car, cdr)) = " " ^ valueString car ^ tail cdr
             | tail NIL = ")"
             | tail v = " . " ^ valueString v ^ ")"
 (* type declarations for consistency checking *)
 val _ = op valueString : value -> string
       in  "(" ^ valueString car ^ tail cdr
       end
-  | valueString (CLOSURE   _) = "<function>"
-  | valueString (PRIMITIVE _) = "<function>"
+  | valueString (CLOSURE ((xs, _), _)) = "<function(" ^ Int.toString (length xs) ^ ")>"
+  | valueString (PRIMITIVE _) = "<primitive>"
 (* definition of [[expString]] for \uscheme S221a *)
 fun expString e =
   let fun bracket s = "(" ^ s ^ ")"
@@ -1199,7 +1199,7 @@ val _ = op embedBool   : bool  -> value
 val _ = op projectBool : value -> bool
 (* utility functions on \uscheme, \tuscheme, and \nml\ values 307c *)
 fun embedList []     = NIL
-  | embedList (h::t) = PAIR (h, embedList t)
+  | embedList (h::t) = PAIR (ref h, embedList t)
 (* utility functions on \uscheme, \tuscheme, and \nml\ values S207d *)
 fun equalatoms (NIL,      NIL    )  = true
   | equalatoms (LUANIL,   LUANIL )  = true
@@ -1210,7 +1210,7 @@ fun equalatoms (NIL,      NIL    )  = true
 (* type declarations for consistency checking *)
 val _ = op equalatoms : value * value -> bool
 (* utility functions on \uscheme, \tuscheme, and \nml\ values S208a *)
-fun equalpairs (PAIR (car1, cdr1), PAIR (car2, cdr2)) =
+fun equalpairs (PAIR (ref car1, cdr1), PAIR (ref car2, cdr2)) =
       equalpairs (car1, car2) andalso equalpairs (cdr1, cdr2)
   | equalpairs (v1, v2) = equalatoms (v1, v2)
 (* type declarations for consistency checking *)
@@ -1481,13 +1481,13 @@ val xdeftable = usageParsers
           fun bprim f (e1, e2) = APPLY (LITERAL (PRIMITIVE (binaryOp f)), [e1,
                                                                             e2])
 
-          val car = uprim (fn PAIR (x, xs) => x  | _ => raise RuntimeError
+          val car = uprim (fn PAIR (ref x, xs) => x  | _ => raise RuntimeError
                                                                      "non-pair")
-          val cdr = uprim (fn PAIR (x, xs) => xs | _ => raise RuntimeError
+          val cdr = uprim (fn PAIR (ref x, xs) => xs | _ => raise RuntimeError
                                                                      "non-pair")
           val nullp = uprim (BOOLV o (fn NIL    => true | _ => false))
           val pairp = uprim (BOOLV o (fn PAIR _ => true | _ => false))
-          val cons = bprim PAIR
+          val cons = bprim (fn (x, y) => PAIR (ref x, y))
 
           fun desugarRecord recname fieldnames =
                 recordConstructor recname fieldnames ::
@@ -1642,7 +1642,7 @@ fun eval (e, rho) =
         | ev (e as APPLY (f, args)) = 
                (case ev f
                   of PRIMITIVE prim => prim (e, map ev args)
-                   | closure as PAIR (f as CLOSURE _, _) =>
+                   | closure as PAIR (ref (f as CLOSURE _), _) =>
                        ev (APPLY (LITERAL f, LITERAL closure :: args))
                    | CLOSURE clo    =>
                        (* apply closure [[clo]] to [[args]] ((mlscheme)) 309a *)
@@ -1653,8 +1653,9 @@ fun eval (e, rho) =
                                            handle BindListLength => 
                                                raise RuntimeError (
                                       "Wrong number of arguments to closure; " ^
-                                                                   "expected ("
-                                                       ^ spaceSep formals ^ ")")
+                                      "expected (" ^ spaceSep formals ^ ")" ^
+                                      " but got (" ^ spaceSep (map valueString actuals) ^ ")"
+                                               )
                                        end
                    | v => raise RuntimeError ("Applied non-function " ^
                                                                   valueString v)
@@ -2049,8 +2050,8 @@ val primitiveBasis =
                               predOp (fn (PRIMITIVE _) => true | (CLOSURE  _) =>
                                                           true | _ => false)) ::
                         (* primitives for \uscheme\ [[::]] S209b *)
-                        ("cons", binaryOp (fn (a, b) => PAIR (a, b))) ::
-                        ("car",  unaryOp  (fn (PAIR (car, _)) => car 
+                        ("cons", binaryOp (fn (a, b) => PAIR (ref a, b))) ::
+                        ("car",  unaryOp  (fn (PAIR (ref car, _)) => car 
                                             | NIL => raise RuntimeError
                                                      "car applied to empty list"
                                             | v => raise RuntimeError
@@ -2062,6 +2063,12 @@ val primitiveBasis =
                                             | v => raise RuntimeError
                                                            (
                                 "cdr applied to non-list " ^ valueString v))) ::
+                        ("set-car!", binaryOp  (fn (PAIR (car, _), v) => (car := v; v)
+                                            | (NIL, _) => raise RuntimeError
+                                                     "set-car! applied to empty list"
+                                            | (v, _) => raise RuntimeError
+                                                           (
+                                "set-car! applied to non-list " ^ valueString v))) ::
                         ("expect",  binaryOp expect) ::
                         ("check",   binaryOp check) ::
                         ("halt",   nullaryOp (fn () => raise Halt)) ::

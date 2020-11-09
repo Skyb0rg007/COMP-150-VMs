@@ -9,12 +9,12 @@
 #include "opcode.h"
 #include "value.h"
 #include "vmheap.h"
+#include "vmsizes.h"
 #include "vmstate.h"
 
 static struct VMFunction *newfunction(int instruction_count) {
   // play it safe: always tack a Halt instruction into the end
-  struct VMFunction *fun =
-    vmalloc(sizeof (*fun) + (instruction_count + 1) * sizeof(fun->instructions[0]));
+  VMNEW(struct VMFunction *, fun, vmsize_fun(instruction_count + 1));
   fun->arity = 0;
   fun->size  = instruction_count + 1;
   fun->instructions[instruction_count] = eR0(Halt);
