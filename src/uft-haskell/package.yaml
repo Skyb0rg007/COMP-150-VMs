@@ -49,8 +49,7 @@ dependencies:
 - unordered-containers
 - vector
 - bifunctors
-# - fastsum
-# - row-types
+- lens-action
 # - souffle-haskell
 
 ghc-options:

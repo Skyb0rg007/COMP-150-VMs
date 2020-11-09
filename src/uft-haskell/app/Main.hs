@@ -4,7 +4,8 @@
 
 module Main where
 
--- import           Control.Lens
+import           Control.Lens
+import           Control.Lens.Action
 import           Control.Monad
 import           Control.Monad.Except
 import           Data.Function             ((&))
@@ -73,7 +74,10 @@ schemeToScheme fileName fileContent = do
 schemeToUnamb :: Pipeline
 schemeToUnamb fileName fileContent = do
     scheme <- parseScheme fileName fileContent
-    unamb <- scheme & listExpand & letStarElim & convertPrim & disambiguate
+    unamb <- scheme ^! to listExpand
+                     . to letStarElim
+                     . act convertPrim
+                     . act disambiguate
     liftIO . print . prettyF $ unamb
 
 -- schemeToUnamb :: Pipeline

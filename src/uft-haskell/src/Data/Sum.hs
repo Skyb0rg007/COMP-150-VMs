@@ -121,10 +121,22 @@ newtype P (t :: Type -> Type) (r :: [Type -> Type]) = P { unP :: Word }
 elemNo :: forall t r. (t :< r) => P t r
 elemNo = P $ fromIntegral $ natVal' (proxy# :: Proxy# (ElemIndex t r))
 
+-- elemNo' :: forall t r. (t :< r) => Word
+-- elemNo' = unP (elemNo :: P t r)
+
+-- elemNos :: forall ts r. (ts :<: r) => [Word]
+-- elemNos = elemNo
+
 -- | Low-level function for accessing the index of the current element in the type-list
 elemIndex :: Sum r v -> Word
 elemIndex (Sum' n _) = n
 {-# INLINE elemIndex #-}
+
+-- decompose' :: forall r r' b. (r' :<: r)
+           -- => Sum r b
+           -- -> (Sum r' :+: Sum (r \\ r')) b
+-- decompose' (Sum' n v) = undefined
+    -- let 
 
 -- | Pattern-match on a type in the 'Sum'
 decompose :: forall e es b. (e :< es)
@@ -139,17 +151,18 @@ decompose (Sum' n v) =
 
 decompose2 :: forall a b es x. ('[a, b] :<: es)
            => Sum es x
-           -> (a :+: b :+: Sum (es \\ '[a, b])) x
+           -> (Sum '[a, b] :+: Sum (es \\ '[a, b])) x
+           -- -> (a :+: b :+: Sum (es \\ '[a, b])) x
 decompose2 (Sum' n v) =
     let a = unP (elemNo :: P a es)
         b = unP (elemNo :: P b es)
      in case (compare n a, compare n b) of
-          (EQ, _) -> L1 (unsafeCoerce v :: a x)
-          (_, EQ) -> R1 (L1 (unsafeCoerce v :: b x))
+          (EQ, _) -> L1 $ Sum' 0 v
+          (_, EQ) -> L1 $ Sum' 1 v
           (x, y)  ->
               let offset GT = 1
                   offset _  = 0
-               in R1 (R1 (Sum' (n - offset x - offset y) v))
+               in R1 $ Sum' (n - offset x - offset y) v
 
 decompose3 :: forall a b c es x. ('[a, b, c] :<: es)
            => Sum es x

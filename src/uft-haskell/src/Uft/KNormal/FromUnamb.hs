@@ -19,20 +19,36 @@ import           Uft.Scheme.Ast
 import           Uft.Scheme.ConvertPrim
 import           Uft.Scheme.Disambiguate
 import           Uft.Scheme.ListExpand
-import           Uft.Asm.Ast (Literal)
 import           Uft.Util
+
+type Literal = OpenADT
+    '[ LitNumF
+     , LitStrF
+     , LitSymF
+     , LitCharF
+     , LitBoolF
+     , LitEmptyF
+     , LitNilF
+     ]
+
+data LitNilF (a :: Type) = LitNilF'
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
+derive [deriveShow1, deriveEq1, deriveOrd1, deriveOpenADT]
+    [''LitNilF]
 
 type KNormal name =
     '[ ExpPrimApplyF name
      , ExpPrimApplyLitF name
      , ExpFunApplyF name
-     , ExpLet1F name
-     , ExpIfF
-     , ExpWhileF
+     , ExpKLetF name
+     , ExpKIfF name
+     , ExpKWhileF name
      , ExpGetLocalF name
      , ExpSetLocalF name
      , ExpBeginF
      , LitNumF
+     , LitNilF
      , LitStrF
      , LitSymF
      , LitCharF
@@ -49,16 +65,22 @@ data ExpPrimApplyF name (a :: Type) = ExpPrimApplyF' !Prim !(Vector name)
 data ExpFunApplyF name (a :: Type) = ExpFunApplyF' !name !(Vector name)
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
-data ExpLet1F name a = ExpLet1F' !name !a !a
+data ExpKLetF name a = ExpKLetF' !name !a !a
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
+data ExpKIfF name a = ExpKIfF' !name !a !a
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
+
+data ExpKWhileF name a = ExpKWhileF' !name !a !a
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 derive [deriveShow1, deriveEq1, deriveOrd1, deriveOpenADT]
-    [''ExpPrimApplyLitF,''ExpPrimApplyF, ''ExpLet1F, ''ExpFunApplyF]
+    [''ExpPrimApplyLitF,''ExpPrimApplyF, ''ExpKLetF, ''ExpFunApplyF, ''ExpKIfF, ''ExpKWhileF]
 
 fromUnamb
     :: forall r m old new.
         ( old ~ '[ExpLetF, ExpLetRecF, ExpSetGlobalF, ExpApplyF]
-        , new ~ '[ExpPrimApplyF Text, ExpPrimApplyLitF Text, ExpLet1F Text, ExpFunApplyF Text]
+        , new ~ '[ExpPrimApplyF Text, ExpPrimApplyLitF Text, ExpKLetF Text, ExpFunApplyF Text]
         , old :<: r
         , '[ExpPrimF, ExpGetLocalF Text, LitNumF, LitStrF, LitSymF, LitEmptyF, LitCharF]
             :<: new ++ (r \\ old)
@@ -80,7 +102,7 @@ fromUnamb = cataM alg where
     alg :: Sum r (OpenADT (new ++ (r \\ old))) -> m (OpenADT (new ++ (r \\ old)))
     alg x =
         case decompose4 x of
-          L1 (ExpLetF' (Vector.toList -> [(x, e)]) body) -> pure $ ExpLet1 x e body
+          L1 (ExpLetF' (Vector.toList -> [(x, e)]) body) -> pure $ ExpKLet x e body
           L1 (ExpLetF' {})         -> throwError "unable to translate"
           R1 (L1 (ExpLetRecF' {})) -> throwError "unable to translate"
           R1 (R1 (L1 (ExpSetGlobalF' x e))) ->

@@ -16,15 +16,18 @@ module Uft.Scheme.ConvertPrim
     , pattern ExpPrimF
     ) where
 
+import           Control.Monad.Except
 import           Data.Deriving
-import           Data.Foldable   (foldl')
+import           Data.Foldable        (foldl')
 import           Data.Kind
+import           Data.Maybe           (isJust)
+import           Data.Text            (Text)
 import           Type.OpenADT
 import           Type.OpenADT.TH
 import           Uft.Pretty
+import           Uft.Primitives
 import           Uft.Scheme.Ast
 import           Uft.Util
-import           Uft.Primitives
 
 newtype ExpPrimF (a :: Type) = ExpPrimF' Prim
     deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
@@ -36,15 +39,23 @@ instance PrettyF ExpPrimF where
     prettyF' (ExpPrimF' p) = parens $ "prim" <+> pretty (_prim_name p)
 
 convertPrim
-    :: forall r.
-        ( ExpVarF :< r
-        , Apply Functor r
+    :: forall r m.
+        ( '[ExpVarF, ExpLetF, ExpLetRecF] :<: r
+        , Applies '[Functor, Foldable, Traversable] r
+        , MonadError Text m
         )
    => OpenADT r
-   -> OpenADT (ExpPrimF : r)
-convertPrim = cata alg where
-    alg :: Sum r (OpenADT (ExpPrimF : r)) -> OpenADT (ExpPrimF : r)
-    alg (ExpVarF x)
-      | Just p <- parsePrim x = ExpPrim p
-    alg x = Fix $ weaken x
+   -> m (OpenADT (ExpPrimF : r))
+convertPrim = cataM alg where
+    alg :: Sum r (OpenADT (ExpPrimF : r)) -> m (OpenADT (ExpPrimF : r))
+    alg = \case
+        ExpVarF x
+          | Just p <- parsePrim x -> pure $ ExpPrim p
+        ExpLetF binds body
+          | any isJust (fmap (parsePrim . fst) binds) ->
+              throwError "Attempt to bind a primitive"
+        ExpLetRecF binds body
+          | any isJust (fmap (parsePrim . fst) binds) ->
+              throwError "Attempt to bind a primitive"
+        x -> pure $ Fix (weaken x)
 

@@ -19,9 +19,11 @@ module Type.List
     , Delete
     , Nub
     , Union
+    , Length
     ) where
 
-import           Data.Kind (Type)
+import           Data.Kind    (Type)
+import           GHC.TypeLits (type (+), Nat)
 
 -- | Append two type-lists
 type family (++) (xs :: [k]) (ys :: [k]) :: [k] where
@@ -50,3 +52,8 @@ type family Nub (xs :: [k]) :: [k] where
 type family Union (xs :: [k]) (ys :: [k]) :: [k] where
     Union xs '[] = xs
     Union xs ys = xs ++ (Nub ys \\ xs)
+
+-- | List length
+type family Length (xs :: [k]) :: Nat where
+    Length '[] = 0
+    Length (_ : xs) = 1 + Length xs

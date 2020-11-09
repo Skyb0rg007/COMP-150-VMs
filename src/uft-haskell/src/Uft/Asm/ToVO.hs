@@ -10,7 +10,7 @@ import qualified Data.Text              as Text
 import qualified Data.Text.Lazy         as Lazy (Text)
 import qualified Data.Text.Lazy         as Lazy.Text
 import           Data.Text.Lazy.Builder (Builder)
-import qualified Data.Text.Lazy.Builder as Builder
+import qualified Data.Text.Lazy.Builder as B
 import           Data.Vector            (Vector)
 import qualified Data.Vector            as Vector
 import           Data.Void              (Void)
@@ -23,14 +23,14 @@ import           Uft.Scheme.ListExpand
 import           Uft.Util
 
 bshow :: Show a => a -> Builder
-bshow = Builder.fromString . show
+bshow = B.fromString . show
 
 compileLiteral :: Literal -> Builder
 compileLiteral = \case
     LitNum n -> bshow n
     LitStr s -> "string " <>
         bshow (Text.length s) <> " " <>
-        Builder.fromText (Text.intercalate " " (map (tshow . ord) (Text.unpack s)))
+        B.fromText (Text.intercalate " " (map (tshow . ord) (Text.unpack s)))
     LitSym s      -> compileLiteral (LitStr s)
     LitChar c     -> error "Compiling characters is NYI"
     LitBool True  -> "true"
@@ -46,10 +46,10 @@ compileInstr = \case
         <> mconcat (map ((<> "\n") . compileInstr) body)
         <> "\nhalt"
     Cmd p args ->
-        Builder.fromText (_prim_name p) <>
+        B.fromText (_prim_name p) <>
         Vector.foldl' (\acc arg -> acc <> " " <> bshow arg) "" args
     CmdLit p args lit ->
-        Builder.fromText (_prim_name p) <>
+        B.fromText (_prim_name p) <>
         Vector.foldl' (\acc arg -> acc <> " " <> bshow arg) "" args <>
         " " <> compileLiteral lit
 
@@ -59,5 +59,5 @@ compileProg prog =
     <> mconcat (map ((<> "\n") . compileInstr) prog)
 
 compileObjProg :: [ObjInstr] -> Text
-compileObjProg = Lazy.Text.toStrict . Builder.toLazyText . compileProg
+compileObjProg = Lazy.Text.toStrict . B.toLazyText . compileProg
 

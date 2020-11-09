@@ -43,6 +43,6 @@ letStarElim = cata alg where
         case decompose x of
           L1 (ExpLetStarF' binds body) ->
               let f e b = ExpLet (Vector.singleton b) e
-               in foldl f body binds
+               in foldl' f body binds
           R1 x' -> Fix x'
 

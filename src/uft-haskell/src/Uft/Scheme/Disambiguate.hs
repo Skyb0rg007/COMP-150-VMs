@@ -111,14 +111,16 @@ disambiguate e = cata alg e `runReaderT` HashSet.empty where
         => Sum r (m (OpenADT (new ++ (r \\ old))))
         -> m (OpenADT (new ++ (r \\ old)))
     alg x =
-        case decompose2 x of
-          L1 (ExpSetF' x e) ->
+        case decompose2 @ExpSetF @ExpVarF x of
+          L1 (ExpSetF x e)
+            | isJust (parsePrim x) -> throwError $ "Unable to set primitive " <> x
+            | otherwise ->
               asks (HashSet.member x) >>= \case
                 False -> ExpSetGlobal x <$> e
                 True  -> ExpSetLocal x <$> e
-          R1 (L1 (ExpVarF' x)) ->
+          L1 (ExpVarF x) ->
               asks (HashSet.member x) <&> \case
                 False -> ExpGetGlobal x
                 True  -> ExpGetLocal x
-          R1 (R1 x') -> Fix <$> disambiguate' (weaken4 x')
+          R1 x' -> Fix <$> disambiguate' (weaken4 x')
 

@@ -1,6 +1,7 @@
 
 module Uft.Asm.Ast
     ( module Uft.Asm.Ast
+    , Literal
     ) where
 
 import           Data.Kind             (Type)
@@ -12,16 +13,7 @@ import           Uft.Pretty
 import           Uft.Primitives
 import           Uft.Scheme.Ast
 import           Uft.Scheme.ListExpand
-
--- | Final literal type
-type Literal = OpenADT
-    '[ LitNumF
-     , LitStrF
-     , LitSymF
-     , LitCharF
-     , LitBoolF
-     , LitEmptyF
-     ]
+import           Uft.KNormal.FromUnamb
 
 -- | Trees that shrink
 type family XInstr x :: Type
