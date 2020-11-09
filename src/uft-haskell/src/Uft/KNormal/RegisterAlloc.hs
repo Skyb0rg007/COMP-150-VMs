@@ -24,21 +24,5 @@ import           Uft.Util
 import           Uft.KNormal.FromUnamb
 import           Uft.Asm.Ast
 
-newtype RegSet = RS Int
 
-smallest :: RegSet -> Int
-smallest (RS n) = n
-
-(-:-) :: RegSet -> Int -> RegSet
-(-:-) (RS n) r = RS (max n (r + 1))
-
-bindAnyReg :: forall r. ('[ExpKLetF Int, ExpGetLocalF Int] :<: r)
-    => RegSet
-    -> OpenADT r
-    -> (Int -> OpenADT r)
-    -> OpenADT r
-bindAnyReg a (ExpGetLocal n) k = k n
-bindAnyReg a e k =
-    let r = smallest a
-     in ExpKLet r e (k r)
 
