@@ -35,6 +35,8 @@ consec :: [Int] -> Bool
 consec (x:y:xs) = x + 1 == y && consec (y:xs)
 consec _ = True
 
+-- Look into manual dictionary passing for catamorphisms
+-- with multiple functions in the typeclass
 class CodegenF f where
     codegenF' :: (MonadError Text m, MonadState Int m)
               => f (Maybe Int -> m [AsmInstr])
