@@ -126,6 +126,10 @@ struct
         fun pair x y = (x, y)
         val binding  = oflist (pair <$> name <*> exp)
         val bindings = oflist (many binding)
+        fun asLambda (e as S.LAMBDA _) = Error.OK e
+          | asLambda e = Error.ERROR "a letrec form may bind only `lambda` expressions"
+        val lambda = P.check (asLambda <$> exp)
+        val lbindings = oflist (many (oflist (pair <$> name <*> lambda)))
     in     bracket "set"       (curry  S.SET <$> name <*> exp)
        <|> bracket "if"        (curry3 S.IFX <$> exp <*> exp <*> exp)
        <|> bracket "while"     (curry  S.WHILEX <$> exp <*> exp)
@@ -134,7 +138,7 @@ struct
        <|> bracket "continue"  (Impossible.exercise <$> succeed "AST for continue")
        <|> bracket "let"       (letx S.LET    <$> bindings <*> exp)
        <|> bracket "let*"      (letstar       <$> bindings <*> exp)
-       <|> bracket "letrec"    (letx S.LETREC <$> bindings <*> exp)
+       <|> bracket "letrec"    (letx S.LETREC <$> lbindings <*> exp)
        <|> bracket "quote"     (      (S.LITERAL o sexp) <$> one)
        <|> bracket "lambda"    (curry S.LAMBDA <$> oflist (many name) <*> exp) 
        <|> bracket "||"        (orSugar <$> many exp) 

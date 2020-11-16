@@ -7,14 +7,18 @@ BIN = $(TOP)/bin
 
 .PHONY: all
 
-all: $(BIN)/vscheme $(BIN)/vschemem
+all: $(BIN)/vscheme $(BIN)/vscheme.opt
 
-$(BIN)/vscheme: vscheme.sml
+$(BIN)/vscheme.opt: vscheme.sml
 	mlton -output $@ -verbose 1 $<
 
-$(BIN)/vschemem: vscheme.sml
+$(BIN)/vscheme: vscheme.sml
 	mosmlc -o $@ $<
 
 .PHONY: moscow
 
-moscow: $(BIN)/vschemem
+moscow: $(BIN)/vscheme
+
+.PHONY: mosml
+
+mosml: $(BIN)/vscheme

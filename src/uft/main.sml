@@ -27,8 +27,11 @@ structure Main = struct
     | errorApp f (x::xs) = Error.>>= (f x, fn _ => errorApp f xs)
 
 
+  fun openIn "-" = TextIO.stdIn
+    | openIn path = TextIO.openIn path
+
   fun tx f []    = run f TextIO.stdIn
-    | tx f paths = errorApp (run f o TextIO.openIn) paths
+    | tx f paths = errorApp (run f o openIn) paths
  
   val _ = tx : (TextIO.instream * TextIO.outstream -> unit Error.error) ->
                string list -> unit Error.error

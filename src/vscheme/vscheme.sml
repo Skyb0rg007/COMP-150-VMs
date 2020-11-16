@@ -2149,7 +2149,13 @@ val primitiveBasis =
                      , "(define reverse (xs) (revapp xs '()))"
                      ,
 ";  predefined uScheme functions ((elided)) (THIS CAN'T HAPPEN -- claimed code was not used) "
-                     ,
+                     , "(define nth (n xs)"
+                     , "  (if (= n 0)"
+                     , "    (car xs)"
+                     , "    (nth (- n 1) (cdr xs))))"
+                     , ""
+                     , "(define CAPTURED-IN (i xs) (nth (+ i 1) xs))"
+                     , 
 ";  definitions of predefined uScheme functions [[and]], [[or]], and [[not]] 97a "
                      , "(define and (b c) (if b  c  b))"
                      , "(define or  (b c) (if b  b  c))"

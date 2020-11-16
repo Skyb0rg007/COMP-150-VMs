@@ -41,6 +41,7 @@ struct
     >>>  SxParse.parse                      (* sx list error *)
     >=>  Error.mapList VSchemeParsers.defs  (* def list list error *)
     >>>  Error.map List.concat              (* def list error *)
+    >>>  Error.map VSchemeTests.delay
     
   val schemexOfFile : instream -> UnambiguousVScheme.def list error =
     schemeOfFile >>>
@@ -65,6 +66,17 @@ struct
 
   val ! = Error.map  (* useful abbreviation for materializers and `translate` *)
 
+  fun HOX_of HOX  = schemexOfFile
+    | HOX_of _    = raise Backward
+
+  fun HO_of HOX  = schemexOfFile >>> ! (map Mutability.moveToHeap)
+    | HO_of HO   = schemexOfFile >=> Error.mapList Mutability.detect
+    | HO_of _    = raise Backward
+
+  fun CL_of CL     = CL_of FO   (* really *)
+    | CL_of HO     = HO_of HO     >>> ! (map ClosureConvert.close)
+    | CL_of HOX    = HO_of HOX    >>> ! (map ClosureConvert.close)
+    | CL_of inLang = FO_of inLang >>> ! (map FOCLUtil.embed)
 
   fun VS_of VS   = VS_of_file
     | VS_of inLang = raise NoTranslationTo VS

@@ -168,10 +168,10 @@ Name     tokens_get_name  (Tokens *p, const char *original) {
     invalid("a name", got(ts), original);
   }
 }
-double   tokens_get_number(Tokens *p, const char *original) {
+double   tokens_get_signed_number(Tokens *p, const char *original) {
   Tokens ts = validate("a number", p, original);
   switch (ts->type) {
-  case TU32:    *p = ts->next; return (double) ts->n;
+  case TU32:    *p = ts->next; return (double) (int32_t) ts->n;
   case TDOUBLE: *p = ts->next; return ts->x;
   case TNAME:   invalid("a number", "a name", original);
   default: assert(0); return 0.0;
@@ -201,7 +201,7 @@ Tokens tokens(const char *s) {
     if (t == q && t > p) {          // the token is all digits
         if (errno == ERANGE) {
             assert(0); // overflow
-        } else if (l >= 0 && l <= UINT32_MAX) {
+        } else if (l >= INT32_MIN && l <= UINT32_MAX) {
             head = mkInt ((uint32_t) l);
         } else {
             head = mkDouble((double) l);

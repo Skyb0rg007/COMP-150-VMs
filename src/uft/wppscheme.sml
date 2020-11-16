@@ -51,9 +51,10 @@ struct
 
   fun bracket docs = P.group (te "(" ++ P.concat docs ++ te ")")
   fun square  docs = P.group (te "[" ++ P.concat docs ++ te "]")
-  fun wrap  docs = P.group (te "(" ++ P.seq linew id docs ++ te ")")
-  fun wraps docs = P.group (te "[" ++ P.seq lines id docs ++ te "]")
+  fun wrap  docs = P.group (te "(" ++ P.seq cn id docs ++ te ")")
+  fun wraps docs = P.group (te "[" ++ P.seq cn id docs ++ te "]")
   fun kw k docs = P.group (te "(" ++ te k ++ te " " ++ P.seq cn id docs ++ te ")")
+  fun kwbreak k b docs = P.group (te "(" ++ te k ++ te " " ++ b ++ P.seq cn id docs ++ te ")")
 
   fun exp e =
      let
@@ -97,7 +98,7 @@ struct
             | S.LETX (lk, bs, e) => 
                 let fun binding (x, e) = wraps [te x, exp e]
                     val bindings = P.seq on binding bs
-                in  nest 3 (kw (letkeyword lk) [wrap [bindings], exp e])
+                in  nest 3 (kwbreak (letkeyword lk) on [wrap [bindings], exp e])
                 end
             | S.LAMBDA (xs, body) =>
                 nest 3 (kw "lambda" [wrap (map te xs), exp body])

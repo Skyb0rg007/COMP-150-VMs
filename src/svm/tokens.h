@@ -50,7 +50,8 @@ void print_tokens(FILE *fp, Tokens ts); // OK even if NULL
 uint32_t tokens_get_int   (Tokens *p, const char *original);
 uint8_t  tokens_get_byte  (Tokens *p, const char *original);
 Name     tokens_get_name  (Tokens *p, const char *original);
-double   tokens_get_number(Tokens *p, const char *original); // also works on int
+double   tokens_get_signed_number(Tokens *p, const char *original); 
+              // get_signed_number also works on int32
 
 
 #endif

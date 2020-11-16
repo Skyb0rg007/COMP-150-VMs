@@ -1,7 +1,7 @@
 (* Representation of sets *)
 
 (* You'll need to use the signature, 
-    but don't need to look at the implementation *)
+    but you don't need to look at the implementation *)
 
 signature SET = sig
   type 'a set
@@ -12,7 +12,7 @@ signature SET = sig
   val elems : 'a set -> 'a list
   val ofList : ''a list -> ''a set
 
-  val union' : ''a set list -> ''a set
+  val union' : ''a set list -> ''a set  (* union of a list of sets *)
 end
 
 

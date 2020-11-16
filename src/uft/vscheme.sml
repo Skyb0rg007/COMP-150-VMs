@@ -78,6 +78,23 @@ structure UnambiguousVScheme = struct
 
 end
 
+structure VSchemeTests : sig
+  val delay : VScheme.def list -> VScheme.def list  (* put tests at end *)
+end
+  =
+struct
+  structure S = VScheme
+  fun isTest (S.CHECK_ASSERT _) = true
+    | isTest (S.CHECK_EXPECT _) = true
+    | isTest (S.VAL _) = false
+    | isTest (S.DEFINE _) = false
+    | isTest (S.EXP _) = false
+
+  fun delay ds =
+    let val (tests, other) = List.partition isTest ds
+    in  other @ tests
+    end
+end
 
 structure VSchemeUtils : sig
   type exp = VScheme.exp
