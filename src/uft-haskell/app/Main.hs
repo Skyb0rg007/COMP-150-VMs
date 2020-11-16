@@ -5,6 +5,9 @@
 module Main where
 
 import           Control.Lens
+import           Control.Monad.Reader
+import           Control.Monad.Except
+import           Data.Bifunctor (first)
 import           Control.Lens.Action
 import           Control.Monad
 import           Control.Monad.Except
@@ -24,12 +27,19 @@ import           System.Environment        (getArgs)
 import           System.Exit
 import           Type.OpenADT
 import           Uft.Pretty
-import           Uft.Scheme.Ast
-import           Uft.Scheme.ConvertPrim
-import           Uft.Scheme.Disambiguate
-import           Uft.Scheme.LetStarElim
-import           Uft.Scheme.ListExpand
-import           Uft.Scheme.Parse
+import           Uft.Parse
+import           Uft.VScheme.Types
+import           Uft.UScheme.Types
+import           Uft.UScheme.KNormalize
+import           Uft.KNormal.Types
+import           Uft.KNormal.ClosureConvert
+import           Uft.SExpr.Types
+import           Uft.SExpr.Parse
+-- import           Uft.Scheme.ConvertPrim
+-- import           Uft.Scheme.Disambiguate
+-- import           Uft.Scheme.LetStarElim
+-- import           Uft.Scheme.ListExpand
+-- import           Uft.Scheme.Parse
 
 usage :: IO a
 usage = do
@@ -48,37 +58,65 @@ main = do
           Nothing -> usage
           Just x  -> pure x
     fileContent :: Text <- Text.IO.readFile fileName
-    res <- runExceptT $ pipeline fileName fileContent
+    sexps <- case parseSExprs fileName fileContent of
+               Left err -> Text.IO.putStrLn err >> exitFailure
+               Right sexps -> pure sexps
+    res <- runExceptT (pipeline sexps)
     case res of
       Left err -> Text.IO.putStrLn err
       Right () -> pure ()
 
 type Pipeline =
     forall m. (MonadIO m, MonadError Text m)
-  => FilePath
-  -> Text
+  => [SExpr]
   -> m ()
 
 pipelines :: (MonadIO m, MonadError Text m)
-          => HashMap Text (FilePath -> Text -> m ())
+          => HashMap Text ([SExpr] -> m ())
 pipelines = HashMap.fromList
     [ ("vs-vs", schemeToScheme)
-    , ("vs-unamb", schemeToUnamb)
+    , ("ho-cl", hoToCl)
+    -- , ("vs-unamb", schemeToUnamb)
     ]
 
-schemeToScheme :: Pipeline
-schemeToScheme fileName fileContent = do
-    scheme <- parseScheme fileName fileContent
-    liftIO . print . prettyF $ scheme
+hoToCl :: Pipeline
+hoToCl sexps = do
+    liftIO $ print sexps
+    input <- case traverse (parseFEither @UScheme PCTop) sexps of
+               Left err -> throwError (Text.pack err)
+               Right x -> pure x
+    liftIO . print $ vsep (map prettyF input)
+    output <- runReaderT (traverse closeExp input) mempty
+    liftIO . print $ vsep (map prettyF output)
 
-schemeToUnamb :: Pipeline
-schemeToUnamb fileName fileContent = do
-    scheme <- parseScheme fileName fileContent
-    unamb <- scheme ^! to listExpand
-                     . to letStarElim
-                     . act convertPrim
-                     . act disambiguate
-    liftIO . print . prettyF $ unamb
+hoToKn :: Pipeline
+hoToKn sexps = do
+    pure ()
+    -- liftIO $ print sexps
+    -- input <- case traverse (parseFEither @UScheme PCTop) sexps of
+               -- Left err -> throwError (Text.pack err)
+               -- Right x -> pure x
+    -- liftIO . print $ vsep (map prettyF input)
+    -- [output] <- runReaderT (traverse closeExp input) mempty
+    -- liftIO . print $ vsep (map prettyF output)
+    -- knorm <- knormalize output
+    -- liftIO . print $ vsep (map prettyF knorm)
+
+schemeToScheme :: Pipeline
+schemeToScheme sexps = do
+    scheme <- case traverse (parseFEither @VSchemeR PCTop) sexps of
+                Left err -> throwError (Text.pack err)
+                Right scheme -> pure scheme
+    liftIO . print $ vsep (map prettyF scheme)
+
+-- schemeToUnamb :: Pipeline
+-- schemeToUnamb fileName fileContent = do
+    -- scheme <- parseScheme fileName fileContent
+    -- unamb <- scheme ^! to listExpand
+                     -- . to letStarElim
+                     -- . act convertPrim
+                     -- . act disambiguate
+    -- liftIO . print . prettyF $ unamb
 
 -- schemeToUnamb :: Pipeline
 -- schemeToUnamb fileName fileContent = do

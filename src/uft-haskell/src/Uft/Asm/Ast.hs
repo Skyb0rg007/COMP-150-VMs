@@ -1,7 +1,7 @@
+{-# LANGUAGE StrictData #-}
 
 module Uft.Asm.Ast
     ( module Uft.Asm.Ast
-    , Literal
     ) where
 
 import           Data.Kind             (Type)
@@ -11,9 +11,15 @@ import           Data.Void             (Void)
 import           Type.OpenADT
 import           Uft.Pretty
 import           Uft.Primitives
-import           Uft.Scheme.Ast
-import           Uft.Scheme.ListExpand
-import           Uft.KNormal.FromUnamb
+
+data AsmLit
+    = LitStr Text
+    | LitSym Text
+    | LitChar Char
+    | LitNum Double
+    | LitEmpty
+    | LitBool Bool
+    deriving (Show, Eq, Ord, Read)
 
 -- | Trees that shrink
 type family XInstr x :: Type
@@ -23,10 +29,10 @@ data InstrX x
     = DefLabelX !(XInstr x) !Text
     | GotoLabelX !(XInstr x) !Text
     | GotoOffset !Int
-    | LoadLiteral !Int !Literal
+    | LoadLiteral !Int !AsmLit
     | LoadFunction !Int !Int ![InstrX x]
     | Cmd !Prim !(Vector Int)
-    | CmdLit !Prim !(Vector Int) !Literal
+    | CmdLit !Prim !(Vector Int) !AsmLit
 
 -- * Assembly
 data Asm

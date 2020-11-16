@@ -32,7 +32,10 @@
     _(return, Return, RETURN)                \
     _(tailcall, Tailcall, TAILCALL)          \
     _(error, Error, ERROR)                   \
-    _(testeq, TestEq, TESTEQ)
+    _(testeq, TestEq, TESTEQ)                \
+    _(getclslot, GetClSlot, GETCLSLOT)       \
+    _(setclslot, SetClSlot, SETCLSLOT)       \
+    _(mkclosure, MkClosure, MKCLOSURE)
 
 /* Define the enum using the title-case version of the opcode names */
 #define X(lower, title, upper) title,

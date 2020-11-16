@@ -17,6 +17,7 @@ module Data.Sum.TH
     , mkApplyInstance
     ) where
 
+import           Data.Foldable (asum)
 import           Data.Kind           (Type)
 import           GHC.TypeLits        (ErrorMessage (..), Nat, TypeError)
 import           Language.Haskell.TH hiding (Type)
@@ -73,16 +74,28 @@ mkElemIndexTypeFamily paramN = do
     <*> pure Nothing
     <*> pure equations
 
+{-
 
+instance (constraint f0, constraint f1) => Apply constraint '[f0, f1] where
+    apply f (Sum 0 r) = f (unsafeCoerce r :: f0)
+    apply f (Sum 1 r) = f (unsafeCoerce r :: f1)
+
+    coapply f r = fmap ((.) (Sum' 0) unsafeCoerce) (f @f0)
+              <|> fmap ((.) (Sum' 1) unsafeCoerce) (f @f1)
+
+-}
 mkApplyInstance :: Integer -> Dec
 mkApplyInstance paramN =
   InstanceD Nothing (AppT constraint <$> typeParams) (AppT (AppT (ConT applyC) constraint) (typeListT PromotedNilT typeParams))
     [ FunD apply (zipWith mkClause [0..] typeParams)
     , PragmaD (InlineP apply Inlinable FunLike AllPhases)
+    , FunD coapply [Clause [VarP f] (NormalB coapplyExp) []]
+    , PragmaD (InlineP coapply Inlinable FunLike AllPhases)
     ]
   where typeParams = VarT . mkName . ('f' :) . show <$> [0..pred paramN]
         applyC = mkName "Apply"
         apply = mkName "apply"
+        coapply = mkName "coapply"
         f = mkName "f"
         r = mkName "r"
         union = mkName "Sum'"
@@ -92,6 +105,14 @@ mkApplyInstance paramN =
           [ VarP f, ConP union [ LitP (IntegerL i), VarP r ] ]
           (NormalB (AppE (VarE f) (SigE (AppE (VarE 'unsafeCoerce) (VarE r)) (AppT nthType a))))
           []
+        coapplyExp = AppE (VarE 'asum) (ListE (zipWith appSum' [0..] typeParams))
+        appSum' i nthType =
+            AppE (AppE (VarE 'fmap)
+              (AppE (AppE (VarE '(.))
+                (AppE (ConE union) (LitE (IntegerL i))))
+                (VarE 'unsafeCoerce)))
+              (AppTypeE (VarE f)
+                nthType)
 
 typeListT :: TH.Type -> [TH.Type] -> TH.Type
 typeListT = foldr (AppT . AppT PromotedConsT)

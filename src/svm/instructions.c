@@ -33,6 +33,9 @@ instruction_info instructions[] = {
   { "tailcall", Tailcall, parseR2, "tailcall rX (rX + 1, ..., rY)" },
   { "error", Error, parseR1, "error rX" },
   { "=", TestEq, parseR3, "rX := rY = rZ" },
+  { "mkclosure", MkClosure, parseR3, "rX := closure[rY, Z]" },
+  { "getclslot", GetClSlot, parseR3, "rX := rY.Z" },
+  { "setclslot", SetClSlot, parseR3, "rX.Y := Z" },
 };
 
 int number_of_instructions = sizeof(instructions) / sizeof(instructions[0]);

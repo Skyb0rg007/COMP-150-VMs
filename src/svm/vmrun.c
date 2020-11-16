@@ -297,6 +297,46 @@ CASE(TestEq):
                     mkBooleanValue(AS_NUMBER(vm, vmstate_get_reg(vm, reg2)) == AS_NUMBER(vm, vmstate_get_reg(vm, reg3))));
             BREAK;
         }
+CASE(GetClSlot):
+        {
+            int reg1 = uX(i);
+            int reg2 = uY(i);
+            int reg3 = uZ(i);
+            struct VMClosure *closure = AS_CLOSURE(vm, vmstate_get_reg(vm, reg2));
+            int index = AS_NUMBER(vm, vmstate_get_reg(vm, reg3));
+            vmstate_set_reg(
+                    vm,
+                    reg1,
+                    closure->captured[index]);
+            BREAK;
+        }
+CASE(SetClSlot):
+        {
+            int reg1 = uX(i);
+            int reg2 = uY(i);
+            int reg3 = uZ(i);
+            struct VMClosure *closure = AS_CLOSURE(vm, vmstate_get_reg(vm, reg1));
+            int index = AS_NUMBER(vm, vmstate_get_reg(vm, reg3));
+            closure->captured[index] = vmstate_get_reg(vm, reg2);
+            BREAK;
+        }
+CASE(MkClosure):
+        {
+            int reg1 = uX(i);
+            int reg2 = uY(i);
+            int reg3 = uZ(i);
+            int ncaptured = reg3 - reg2;
+            struct VMFunction *f = AS_VMFUNCTION(vm, vmstate_get_reg(vm, reg2));
+            VMNEW(struct VMClosure *, closure, sizeof *closure + ncaptured);
+            closure->f = f;
+            for (int i = 0; i < ncaptured; i++)
+                closure->captured[i] = vmstate_get_reg(vm, reg2 + i);
+            vmstate_set_reg(
+                    vm,
+                    reg1,
+                    mkClosureValue(closure));
+            BREAK;
+        }
 DEFAULT:
         {
             abort();

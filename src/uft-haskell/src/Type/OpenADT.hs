@@ -24,7 +24,7 @@ module Type.OpenADT
     , hyloM
     ) where
 
-import           Data.Functor.Foldable as X (Fix (..), ana, cata, hylo, unfix)
+import           Data.Functor.Foldable as X (Fix (..), ana, cata, hylo, unfix, para, apo, zygo)
 import           Data.Functor.Foldable
 import           Data.Sum              as X
 import           Type.List             as X

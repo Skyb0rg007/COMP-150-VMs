@@ -2,6 +2,7 @@
 {-# LANGUAGE MagicHash            #-}
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableSuperClasses #-}
 {-
    Module:      Data.Sum
    Description: Open sum of products
@@ -23,6 +24,7 @@ module Data.Sum
       Sum (Sum)
     -- * Operating on sums
     , decompose
+    , decompose'
     , decompose2
     , decompose3
     , decompose4
@@ -31,9 +33,11 @@ module Data.Sum
     , decomposeObvious
     , decomposeAbsurd
     , weaken
+    , weaken'
     , weaken2
     , weaken3
     , weaken4
+    , reorder
     -- * Miscellaneous functions
     , elemIndex
     -- * Membership
@@ -42,7 +46,7 @@ module Data.Sum
     , Elements
     , type (:<:)
     -- * Typeclass application
-    , Apply (apply)
+    , Apply (apply, coapply)
     , apply'
     , apply2
     , apply2'
@@ -51,17 +55,23 @@ module Data.Sum
     , module GHC.Generics
     ) where
 
+import           Control.Applicative  (Alternative (empty))
+import           Data.Foldable (asum)
 import           Data.Functor.Classes
 import           Data.Hashable        (Hashable (..))
 import           Data.Hashable.Lifted (Hashable1 (..), hashWithSalt1)
 import           Data.Kind            (Constraint, Type)
 import           Data.Maybe           (fromMaybe)
+import           Data.Proxy           (Proxy (Proxy))
 import           Data.Sum.TH          (mkApplyInstance, mkElemIndexTypeFamily)
 import           GHC.Exts             (Any, Proxy#, proxy#)
 import           GHC.TypeLits         (KnownNat, natVal')
 import           Unsafe.Coerce        (unsafeCoerce)
 import           GHC.Generics         (type (:+:) (..))
-import           Type.List            (Delete, type (\\), type (++))
+import           Text.Read            (Read (readPrec))
+import           Type.List            (Delete, type (\\), type (++), Length)
+import           Data.Constraint      (Dict (Dict), (\\), type (:-) (Sub))
+import           Data.Constraint.Unsafe
 
 -- Generates:
 -- type family ElemIndex (t :: Type -> Type) (ts :: [Type -> Type]) :: Nat where
@@ -72,7 +82,7 @@ import           Type.List            (Delete, type (\\), type (++))
 --   ElemIndex t4 (t0 : t1 : t2 : t3 : t4 : _) = 4
 --   etc...
 --   ElemIndex t ts = TypeError (Text "'" :<>: ShowType t :<>: Text "' is not a member of type type-level list" :$$: ShowType ts)
-mkElemIndexTypeFamily 100
+mkElemIndexTypeFamily 50
 
 -- | Sum type over a type-level list of products
 data Sum (r :: [Type -> Type]) (v :: Type) where
@@ -98,20 +108,21 @@ project (Sum' n x) =
 -----------------------------------------------------------------------------
 
 -- | Ensure that a type is an element of the type-list at a known position
-type Element t r = KnownNat (ElemIndex t r)
+class KnownNat (ElemIndex t r) => Element r t 
+instance KnownNat (ElemIndex t r) => Element r t 
 
 -- | Infix 'Element'
 infixr 5 :<
-type t :< r = Element t r
+type t :< r = Element r t
 
 -- | Ensure that each type is a member of the type-list
-type family Elements (ts :: [Type -> Type]) r :: Constraint where
-    Elements (t : ts) r = (Element t r, Elements ts r)
-    Elements '[] r = ()
+type family Elements r (ts :: [Type -> Type]) :: Constraint where
+    Elements r (t : ts) = (Element r t, Elements r ts)
+    Elements r '[]      = ()
 
 -- | Infix 'Elements'
 infixr 5 :<:
-type ts :<: r = Elements ts r
+type ts :<: r = Elements r ts
 
 -- | Newtype wrapper around the position index
 -- Allows for safer access of the element's position
@@ -121,22 +132,10 @@ newtype P (t :: Type -> Type) (r :: [Type -> Type]) = P { unP :: Word }
 elemNo :: forall t r. (t :< r) => P t r
 elemNo = P $ fromIntegral $ natVal' (proxy# :: Proxy# (ElemIndex t r))
 
--- elemNo' :: forall t r. (t :< r) => Word
--- elemNo' = unP (elemNo :: P t r)
-
--- elemNos :: forall ts r. (ts :<: r) => [Word]
--- elemNos = elemNo
-
 -- | Low-level function for accessing the index of the current element in the type-list
 elemIndex :: Sum r v -> Word
 elemIndex (Sum' n _) = n
 {-# INLINE elemIndex #-}
-
--- decompose' :: forall r r' b. (r' :<: r)
-           -- => Sum r b
-           -- -> (Sum r' :+: Sum (r \\ r')) b
--- decompose' (Sum' n v) = undefined
-    -- let 
 
 -- | Pattern-match on a type in the 'Sum'
 decompose :: forall e es b. (e :< es)
@@ -152,7 +151,6 @@ decompose (Sum' n v) =
 decompose2 :: forall a b es x. ('[a, b] :<: es)
            => Sum es x
            -> (Sum '[a, b] :+: Sum (es \\ '[a, b])) x
-           -- -> (a :+: b :+: Sum (es \\ '[a, b])) x
 decompose2 (Sum' n v) =
     let a = unP (elemNo :: P a es)
         b = unP (elemNo :: P b es)
@@ -166,37 +164,58 @@ decompose2 (Sum' n v) =
 
 decompose3 :: forall a b c es x. ('[a, b, c] :<: es)
            => Sum es x
-           -> (a :+: b :+: c :+: Sum (es \\ '[a, b, c])) x
+           -> (Sum '[a, b, c] :+: Sum (es \\ '[a, b, c])) x
 decompose3 (Sum' n v) =
     let a = unP (elemNo :: P a es)
         b = unP (elemNo :: P b es)
         c = unP (elemNo :: P c es)
      in case (compare n a, compare n b, compare n c) of
-          (EQ, _, _) -> L1 (unsafeCoerce v :: a x)
-          (_, EQ, _) -> R1 (L1 (unsafeCoerce v :: b x))
-          (_, _, EQ) -> R1 (R1 (L1 (unsafeCoerce v :: c x)))
+          (EQ, _, _) -> L1 $ Sum' 0 v
+          (_, EQ, _) -> L1 $ Sum' 1 v
+          (_, _, EQ) -> L1 $ Sum' 2 v
           (x, y, z)  ->
               let offset GT = 1
                   offset _  = 0
-               in R1 (R1 (R1 (Sum' (n - offset x - offset y - offset z) v)))
+               in R1 $ Sum' (n - offset x - offset y - offset z) v
 
 decompose4 :: forall a b c d es x. ('[a, b, c, d] :<: es)
            => Sum es x
-           -> (a :+: b :+: c :+: d :+: Sum (es \\ '[a, b, c, d])) x
+           -> (Sum '[a, b, c, d] :+: Sum (es \\ '[a, b, c, d])) x
 decompose4 (Sum' n v) =
     let a = unP (elemNo :: P a es)
         b = unP (elemNo :: P b es)
         c = unP (elemNo :: P c es)
         d = unP (elemNo :: P d es)
      in case (compare n a, compare n b, compare n c, compare n d) of
-          (EQ, _, _, _) -> L1 (unsafeCoerce v :: a x)
-          (_, EQ, _, _) -> R1 (L1 (unsafeCoerce v :: b x))
-          (_, _, EQ, _) -> R1 (R1 (L1 (unsafeCoerce v :: c x)))
-          (_, _, _, EQ) -> R1 (R1 (R1 (L1 (unsafeCoerce v :: d x))))
+          (EQ, _, _, _) -> L1 $ Sum' 0 v
+          (_, EQ, _, _) -> L1 $ Sum' 1 v
+          (_, _, EQ, _) -> L1 $ Sum' 2 v
+          (_, _, _, EQ) -> L1 $ Sum' 3 v
           (x, y, z, zz) ->
               let offset GT = 1
                   offset _  = 0
-               in R1 (R1 (R1 (R1 (Sum' (n - offset x - offset y - offset z - offset zz) v))))
+               in R1 $ Sum' (n - offset x - offset y - offset z - offset zz) v
+
+class (ts :<: r) => ElemNos ts r where
+    elemNos' :: [Word]
+
+instance ElemNos '[] r where
+    elemNos' = []
+
+instance (t :< r, ElemNos ts r) => ElemNos (t:ts) r where
+    elemNos' = unP (elemNo @t @r) : elemNos' @ts @r
+
+decompose' :: forall rem r x. (ElemNos rem r)
+           => Sum r x
+           -> (Sum rem :+: Sum (r \\ rem)) x
+decompose' (Sum' n v) =
+    case sequence (zipWith f [0..] (elemNos' @rem @r)) of
+      Left idx -> L1 $ Sum' idx v
+      Right ns -> R1 $ Sum' (n - sum ns) v
+    where f idx x = case compare n x of
+                      EQ -> Left idx
+                      LT -> Right 0
+                      GT -> Right 1
 
 -- | Pattern-match on the first type in the 'Sum'
 decomposeFirst :: Sum (e : es) b -> (e :+: Sum es) b
@@ -220,6 +239,10 @@ weaken :: Sum r v -> Sum (any : r) v
 weaken (Sum' n x) = Sum' (n + 1) x
 {-# INLINE weaken #-}
 
+weaken' :: forall r' r v. Sum r v -> Sum (r ++ r') v
+weaken' (Sum' n x) = Sum' n x
+{-# INLINE weaken' #-}
+
 weaken2 :: Sum r v -> Sum (any1 : any2 : r) v
 weaken2 (Sum' n x) = Sum' (n + 2) x
 {-# INLINE weaken2 #-}
@@ -234,9 +257,15 @@ weaken4 (Sum' n x) = Sum' (n + 4) x
 
 class Apply (c :: (Type -> Type) -> Constraint) (fs :: [Type -> Type]) where
     apply :: (forall g. c g => g a -> b) -> Sum fs a -> b
+    coapply :: Alternative m
+            => (forall g. c g => m (g b))
+            -> m (Sum fs b)
 
 instance Apply c '[] where
     apply _ x = decomposeAbsurd x
+    coapply _ = empty
+    {-# INLINABLE apply #-}
+    {-# INLINABLE coapply #-}
 
 -- | 'apply', but given a function for lifting the value back into the sum
 apply' :: forall c fs a b . (Apply c fs)
@@ -269,11 +298,11 @@ apply2' f u@(Sum' n1 _) (Sum' n2 r2)
 {-# INLINABLE apply2' #-}
 
 -- Generates:
--- instance c f0               => Apply c '[f0] where apply = ...
--- instance (c f0, c f1)       => Apply c '[f0, f1] where apply = ...
--- instance (c f0, c f1, c f2) => Apply c '[f0, f1, f2] where apply = ...
+-- instance c f0               => Apply c '[f0] where ...
+-- instance (c f0, c f1)       => Apply c '[f0, f1] where ...
+-- instance (c f0, c f1, c f2) => Apply c '[f0, f1, f2] where ...
 -- ...
-pure (mkApplyInstance <$> [1 .. 100])
+pure (mkApplyInstance <$> [1 .. 50])
 
 instance Apply Foldable fs => Foldable (Sum fs) where
     foldMap f = apply @Foldable (foldMap f)
@@ -315,6 +344,11 @@ instance Apply Show1 fs => Show1 (Sum fs) where
 instance (Apply Show1 fs, Show a) => Show (Sum fs a) where
     showsPrec = showsPrec1
 
+instance Apply Read1 fs => Read1 (Sum fs) where
+    liftReadPrec rp rl = coapply @Read1 (liftReadPrec rp rl)
+instance (Apply Read1 fs, Read a) => Read (Sum fs a) where
+    readPrec = readPrec1
+
 instance Apply Hashable1 fs => Hashable1 (Sum fs) where
     liftHashWithSalt h salt u = hashWithSalt salt $
         apply @Hashable1 (liftHashWithSalt h (fromIntegral (elemIndex u))) u
@@ -325,8 +359,6 @@ type family Applies (cs :: [(Type -> Type) -> Constraint]) (fs :: [Type -> Type]
     Applies '[] fs = ()
     Applies (c : cs) fs = (Apply c fs, Applies cs fs)
 
--- broaden
-    -- :: forall r1 r2 x. (r1 :<: r2)
-    -- => Sum r1
-    -- -> Sum r2
--- broaden s
+reorder :: forall r' r v. Apply (Element r') r => Sum r v -> Sum r' v
+reorder = apply @(Element r') Sum
+

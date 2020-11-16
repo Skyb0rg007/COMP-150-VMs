@@ -50,6 +50,7 @@ dependencies:
 - vector
 - bifunctors
 - lens-action
+- parser-combinators
 # - souffle-haskell
 
 ghc-options:
@@ -72,6 +73,7 @@ default-extensions:
 - DeriveTraversable
 - DerivingStrategies
 - DerivingVia
+- DeriveAnyClass
 - EmptyCase
 - ExistentialQuantification
 - FlexibleContexts

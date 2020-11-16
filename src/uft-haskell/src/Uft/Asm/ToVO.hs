@@ -18,14 +18,12 @@ import           Type.OpenADT
 import           Uft.Asm.Ast
 import           Uft.Pretty
 import           Uft.Primitives
-import           Uft.Scheme.Ast
-import           Uft.Scheme.ListExpand
 import           Uft.Util
 
 bshow :: Show a => a -> Builder
 bshow = B.fromString . show
 
-compileLiteral :: Literal -> Builder
+compileLiteral :: AsmLit -> Builder
 compileLiteral = \case
     LitNum n -> bshow n
     LitStr s -> "string " <>

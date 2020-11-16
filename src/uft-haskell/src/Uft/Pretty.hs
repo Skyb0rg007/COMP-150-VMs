@@ -21,6 +21,7 @@ module Uft.Pretty
     , styleString
     , styleComment
     , styleSym
+    , stylePrim
     , astToAnsi
     , prettyF
     , module Data.Text.Prettyprint.Doc
@@ -28,7 +29,7 @@ module Uft.Pretty
     , vsep'
     ) where
 
-import           Data.Text.Prettyprint.Doc
+import           Data.Text.Prettyprint.Doc hiding (SimpleDocStream (..))
 import           Data.Text.Prettyprint.Doc.Render.Terminal
 import           Type.OpenADT
 
@@ -42,6 +43,7 @@ data ASTStyle
     | StyleString
     | StyleComment
     | StyleSym
+    | StylePrim
     deriving (Show, Eq, Ord, Enum, Bounded)
 
 -- | Style like a keyword
@@ -75,6 +77,10 @@ styleComment = annotate StyleComment
 -- | Style like a symbol
 styleSym :: Doc ASTStyle -> Doc ASTStyle
 styleSym = annotate StyleSym
+
+-- | Style like a primitive
+stylePrim :: Doc ASTStyle -> Doc ASTStyle
+stylePrim = annotate StylePrim
 
 -- | Convert the AST styling to a terminal-rendered version
 astToAnsi :: ASTStyle -> AnsiStyle
