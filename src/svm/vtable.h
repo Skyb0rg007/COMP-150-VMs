@@ -32,8 +32,8 @@ extern void VTable_internal_values(T vtable, void visit(Value *));
   // It is an *unchecked* run-time error for `visit` to mutate `vtable`
   // or to change what any value hashes to.  
 
-extern T* VTable_forwarded(T vtable);
-  // return the addres of `vtable`'s internal forwarding pointer
+extern T* VTable_forwarded_ptr(T vtable);
+  // return the address of `vtable`'s internal forwarding pointer
 
 
 #undef T

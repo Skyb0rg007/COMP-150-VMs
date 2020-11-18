@@ -135,6 +135,7 @@ static VMString allocstring(size_t len, uint32_t hash) {
   hs->length = len;
   hs->hash = hash;
   hs->next_interned = NULL;
+  GCINIT(*hs);
   bytes(hs)[len] = '\0';
   return hs;
 }

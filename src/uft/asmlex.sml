@@ -114,11 +114,17 @@ struct
   val whitespace =
     curry op @ <$> many (sat Char.isSpace one) <*> (comment <|> succeed [])
 
+  fun strictIntFromString s =
+      if List.all Char.isDigit (explode s) then
+          Int.fromString s
+      else
+          NONE
+
   fun registerNum s =
     let val prefixes = ["r", "$r"]
         fun regNum prefix s =
           if String.isPrefix prefix s then
-            (Int.fromString o String.extract) (s, size prefix, NONE)
+            (strictIntFromString o String.extract) (s, size prefix, NONE)
           else
             NONE
         fun get (p::ps) s =

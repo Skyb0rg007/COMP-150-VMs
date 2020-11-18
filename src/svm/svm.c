@@ -18,6 +18,7 @@
 #include "loader.h"
 #include "itable.h"
 #include "print.h"
+#include "svmdebug.h"
 #include "vmheap.h"
 #include "vmrun.h"
 #include "vmstate.h"
@@ -57,5 +58,6 @@ int main(int argc, char **argv) {
     heap_shutdown();
     name_cleanup();
     Vmstring_finish();
+    svmdebug_finalize();
     return EXIT_SUCCESS;
 }

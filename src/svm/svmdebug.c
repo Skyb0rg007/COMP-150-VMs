@@ -34,7 +34,7 @@ static void cachefree(Cacheline c) {
     cachefree(c->next);
     free(c->key);
     free(c->value);
-    cachefree(c);
+    free(c);
   }
 }
 

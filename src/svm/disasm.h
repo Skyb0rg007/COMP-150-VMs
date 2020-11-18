@@ -23,6 +23,9 @@ void idump(FILE *fp, VMState vm, int pc, Instruction I,
                              // is printed, but `idump` doesn't compute with it
            Value *RX, Value *RY, Value *RZ);
 
+const char *lastglobalset(struct VMState *vm, uint8_t reg, struct VMFunction *f, Instruction *pc);
+  // returns the name of the last global variable that `reg` was set from
+  // strictly _before_ `pc`, or if no such name is discoverable, returns NULL
 
 #endif
 

@@ -10,6 +10,7 @@ structure Disambiguate :> sig
   val disambiguate : VScheme.def -> UnambiguousVScheme.def
      (* N.B. Also eta-expands primitives in non-application position *)
   val ambiguate : UnambiguousVScheme.def -> VScheme.def
+  val ambiguateExp : UnambiguousVScheme.exp -> VScheme.exp
 end
   =
 struct
@@ -150,6 +151,7 @@ struct
   in
 
     val ambiguate = def
+    val ambiguateExp = exp
 
   end
 

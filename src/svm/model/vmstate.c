@@ -22,7 +22,7 @@ void freestatep(VMState *sp) {
 VMState newstate(void) {
     VMState m = calloc(1, sizeof(*m)); // relies on tag for Nil == 0
     assert(m);
-    m->globals = VTable_new(200);
+    m->globals = VTable_new(90);
     return m;
 }
 

@@ -32,6 +32,7 @@ end
 structure UnambiguousVScheme = struct
   type name = string
   type primitive = Primitive.primitive
+  datatype let_kind = datatype VScheme.let_kind
   datatype exp = LITERAL   of value
                | LOCAL     of name
                | GLOBAL    of name
@@ -44,7 +45,6 @@ structure UnambiguousVScheme = struct
                | PRIMCALL  of primitive * exp list
                | LETX      of let_kind * (name * exp) list * exp
                | LAMBDA    of lambda
-  and let_kind = LET | LETREC
   and    value = SYM       of name
                | NUM       of int
                | BOOLV     of bool   

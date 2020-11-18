@@ -11,6 +11,8 @@
 #include "vtable.h"
 #include "vmheap.h"
 
+#include "print.h"
+
 #define T VTable_T
 struct T {
         GCMETA(T)
@@ -24,7 +26,18 @@ struct T {
 	} **buckets;
 };
 
-extern T* VTable_forwarded(T vtable) {
+void *firstbucket(T table) {
+  void *p = table->buckets[0];
+  if (p)
+    fprintf(stderr, "First bucket is at %p\n", (void*)&table->buckets[0]);
+  return p;
+}
+
+void *firstbucketaddr(T table) {
+  return &table->buckets[0];
+}
+
+extern T* VTable_forwarded_ptr(T vtable) {
   assert(vtable);
   return &vtable->forwarded;
 }
@@ -53,6 +66,8 @@ T VTable_new(int hint) {
 	return table;
 }
 
+
+
 Value VTable_get(T table, Value key) {
 	int i;
 	struct binding *p;
@@ -62,6 +77,19 @@ Value VTable_get(T table, Value key) {
 	for (p = table->buckets[i]; p; p = p->link)
 		if (identical(key, p->key))
 			break;
+                else if (0) {
+                  fprintf(stderr, "Tags %d and %d: ", key.tag, p->key.tag);
+                  fprintf(stderr, "Payloads %p and %p\n", (void*)key.s, (void*)p->key.s);
+                  heapsearch("parameter's payload", key.s);
+                  heapsearch("stored key's payload", p->key.s);
+                  
+                  fprint(stderr, "Key %v not identical to stored key %v", key, p->key);
+                }
+        if (0 && p == NULL) {
+          for (int i = 0; i < table->size; i++)
+            if (table->buckets[i])
+              fprint(stderr, "bucket %d has key %v\n", i, table->buckets[i]->key);
+        }
 	return p ? p->value : nilValue;
 }
 
@@ -100,10 +128,14 @@ int VTable_length(T table) {
 void VTable_internal_values(T table, void visit(Value *vp)) {
   assert(table);
   assert(visit);
+//  fprintf(stderr, "table has %d buckets holding %d elements\n", table->size, table->length);
   for (int i = 0; i < table->size; i++)
     for (struct binding *p = table->buckets[i]; p; p = p->link) {
+//      fprint(stderr, "visiting internal pair { %v |--> %v }\n", p->key, p->value);
+//      fprintf(stderr, "before visit, internal key payload is %p\n", (void*)p->key.s);
       visit(&p->key);
       visit(&p->value);
+//      fprintf(stderr, "after visit, internal key payload is %p\n", (void*)p->key.s);
     }
 }
 
@@ -112,6 +144,7 @@ static struct binding *copy_chain(struct binding *p) {
     return p;
   } else {
     struct binding *copy = vmalloc_raw(sizeof(*p));
+//    fprint(stderr, "coping pair { %v |--> %v }\n", p->key, p->value);
     copy->key = p->key;
     copy->value = p->value;
     copy->link = copy_chain(p->link);
@@ -122,7 +155,8 @@ static struct binding *copy_chain(struct binding *p) {
 T VTable_copy(T old) {
   assert(old);
   VMNEW(T, new, VTable_size(old->size));
-  memcpy(new, old, VTable_size(old->size));
+  memcpy(new, old, sizeof(*new));
+  new->buckets = (struct binding **)(new + 1);
   for (int i = 0; i < old->size; i++)
     new->buckets[i] = copy_chain(old->buckets[i]);
   return new;

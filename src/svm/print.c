@@ -85,6 +85,34 @@ void printdecimal(Printbuf output, va_list_box *box) {
     bufputs(output, buf);
 }
 
+void printhex(Printbuf output, va_list_box *box) {
+    char buf[2 + 3 * sizeof(int)];
+    snprintf(buf, sizeof(buf), "%x", va_arg(box->ap, int));
+    bufputs(output, buf);
+}
+
+static void commabuf(Printbuf output, int n) {
+  bool leadingzeroes = false;
+  if (n < 0) {
+    bufputs(output, "-");
+    n = (-n);
+  }
+  if (n > 999) {
+    commabuf(output, n / 1000);
+    bufputs(output, ",");
+    n = n % 1000;
+    leadingzeroes = true;
+  }
+  assert(n >= 0 && n < 1000);
+  char buf[4];
+  snprintf(buf, sizeof(buf), leadingzeroes ? "%03d" : "%d", n);
+  bufputs(output, buf);
+}
+
+void printcommadecimal(Printbuf output, va_list_box *box) {
+    commabuf(output, va_arg(box->ap, int));
+}
+
 void printpointer(Printbuf output, va_list_box *box) {
     char buf[12 + 3 * sizeof(void *)];
     snprintf(buf, sizeof(buf), "%p", va_arg(box->ap, void *));
@@ -106,10 +134,12 @@ void printchar(Printbuf output, va_list_box *box) {
 void installprinters(void) {
     installprinter('c', printchar);
     installprinter('d', printdecimal);
+    installprinter(',', printcommadecimal);
     installprinter('n', printname);
     installprinter('s', printstring);
     installprinter('v', bprintvalue);
     installprinter('V', bprintquotedvalue);
+    installprinter('x', printhex);
     installprinter('%', printpercent);
 }
 
@@ -166,8 +196,7 @@ void bprintvalue(Printbuf output, va_list_box *box) {
     case LightUserdata: OUTPUT("userdata %p", (void *) v.p); break;
     case ConsCell:   print_list(output, v); break;
     case Emptylist:  bufputs(output, "'()"); break;
-    default: fprintf(stderr, "ERROR<tag=%d>\n", v.tag); break;
-    /* default: fprintf(stderr, "ERROR in print.c <tag=%d>\n", v.tag); break; */
+    default: fprintf(stderr, "BAD TAG in print.c <tag=%d=0x%x>\n", v.tag, v.tag); break;
     }
 }
 

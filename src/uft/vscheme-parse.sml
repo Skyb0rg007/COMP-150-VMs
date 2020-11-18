@@ -121,6 +121,17 @@ struct
         in  S.LETX (S.LET, [(x, e1)], S.IFX (S.VAR x, S.VAR x, e2))
         end
 
+  fun realExp x = (* materialize a real number, using crippled Moscow ML Real *)
+    let val n    = Real.trunc x
+        val frac = x - real n  (* x = n + frac *)
+        val denominator = 1000000
+        val numerator = Real.round (frac * real denominator)
+        fun prim p args = S.APPLY(S.VAR p, args)
+        fun lit n = S.LITERAL (S.NUM n)
+    in  prim "+" [lit n, prim "/" [lit numerator, lit denominator]]
+    end
+
+
   val exp = P.fix' (fn expref =>
     let val exp = P.!! expref
         fun pair x y = (x, y)
@@ -144,11 +155,11 @@ struct
        <|> bracket "||"        (orSugar <$> many exp) 
        <|> bracket "&&"        (andSugar <$> many exp) 
        <|> oflist eos >> P.perror "empty list as Scheme expression"
+       <|> realExp <$> sxreal
        <|> S.LITERAL <$> (    kw "#t" >> P.succeed (S.BOOLV true)
                           <|> kw "#f" >> P.succeed (S.BOOLV false)
                           <|> S.BOOLV <$> bool
                           <|> S.NUM <$> int
-                          <|> (S.SYM o Real.toString) <$> sxreal
                          )
        <|> S.VAR <$> name
        <|> oflist (curry S.APPLY <$> exp <*> many exp) 

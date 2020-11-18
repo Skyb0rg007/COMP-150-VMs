@@ -92,6 +92,7 @@ static inline Value mkVMFunctionValue(struct VMFunction *f);
 static inline Value mkClosureValue(struct VMClosure *cl);
 static inline Value mkBlockValue(struct VMBlock *bl);
 static inline Value mkConsValue(struct VMBlock *bl);
+static inline Value mkTableValue(struct VTable_T *table);
 
 ////// observation/elimination for values
 
@@ -187,17 +188,17 @@ extern _Noreturn void typeerror(VMState state, const char *expected, Value got,
 static inline struct VMBlock *asBlock_(VMState vm, Value v, const char *file, int line) {
   if (v.tag != Block)
     typeerror(vm, "a block", v, file, line);
-  return v.block;
+  return GCVALIDATE(v.block);
 }
 static inline struct VMBlock *asCons_(VMState vm, Value v, const char *file, int line) {
   if (v.tag != ConsCell)
     typeerror(vm, "a cons cell", v, file, line);
-  return v.block;
+  return GCVALIDATE(v.block);
 }
 static inline const char *asCString_(VMState vm, Value v, const char *file, int line) {
   if (v.tag != String)
     typeerror(vm, "a string", v, file, line);
-  return v.s->bytes;
+  return GCVALIDATE(v.s)->bytes;
 }
 static inline Number_T asNumber_(VMState vm, Value v, const char *file, int line) {
   if (v.tag != Number)
@@ -207,17 +208,17 @@ static inline Number_T asNumber_(VMState vm, Value v, const char *file, int line
 static inline struct VMClosure *asClosure_(VMState vm, Value v, const char *file, int line) {
   if (v.tag != VMClosure)
     typeerror(vm, "a closure", v, file, line);
-  return v.hof;
+  return GCVALIDATE(v.hof);
 }
 static inline struct VMFunction *asVMFunction_(VMState vm, Value v, const char *file, int line) {
   if (v.tag != VMFunction)
     typeerror(vm, "a VM function", v, file, line);
-  return v.f;
+  return GCVALIDATE(v.f);
 }
 static inline struct VMString *asVMString_(VMState vm, Value v, const char *file, int line) {
   if (v.tag != String)
     typeerror(vm, "a string", v, file, line);
-  return v.s;
+  return GCVALIDATE(v.s);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -269,6 +270,13 @@ static inline Value mkConsValue(struct VMBlock *bl) {
   Value val;
   val.tag = ConsCell;
   val.block = bl;
+  return val;
+}
+
+static inline Value mkTableValue(struct VTable_T *t) {
+  Value val;
+  val.tag = Table;
+  val.table = t;
   return val;
 }
 
