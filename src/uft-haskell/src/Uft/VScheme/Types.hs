@@ -29,6 +29,7 @@ import           Uft.Pretty
 import           Uft.SExpr.Types
 import           Uft.Util
 import           Uft.Primitives
+import           Uft.Naming
 
 -- | Variants that are part of the VScheme language datatype
 -- Note that the order matters for parsing
@@ -92,7 +93,7 @@ instance PrettyF LSymF where
 
 -- | Symbols are parsed from symbol atoms when in quote context
 instance ParseF LSymF where
-    parseF' PCQ{} (SAtom (SSymbol s)) = pure $ LSymF' s
+    parseF' PCQ{} (SAtom (SSymbol (Name s))) = pure $ LSymF' s
     parseF' _ _ = empty
 
 -- | String literal
@@ -242,7 +243,7 @@ matchBinds (SList binds) = traverse matchBind binds
 matchBinds _ = Nothing
 
 matchBind :: SExpr -> Maybe (Text, (ParseContext, SExpr))
-matchBind (SList [SAtom (SSymbol x), e]) = Just (x, (PCExp, e))
+matchBind (SList [SAtom (SSymbol (Name x)), e]) = Just (x, (PCExp, e))
 matchBind _ = Nothing
 
 -- | Let expressions are parsed when not quoted
@@ -340,7 +341,7 @@ instance PrettyF ESetF where
         styleKw "set!" <+> styleVar (pretty x) <+> align e
 
 instance ParseF ESetF where
-    parseF' PCNotQ (SList ["set!", SAtom (SSymbol x), e]) =
+    parseF' PCNotQ (SList ["set!", SAtom (SSymbol (Name x)), e]) =
         pure $ ESetF' x (PCExp, e)
     parseF' PCNotQ (SCons "set!" _) = fail "Invalid set! syntax"
     parseF' _ _ = empty
@@ -387,7 +388,7 @@ instance PrettyF ELambdaF where
         "lambda" <+> parens (hsep (map pretty args))
         <+> body
 
-isSym (SAtom (SSymbol s)) = Just s
+isSym (SAtom (SSymbol (Name s))) = Just s
 isSym _ = Nothing
 
 instance ParseF ELambdaF where
@@ -416,7 +417,7 @@ instance PrettyF EVarF where
     prettyF' (EVarF' x) = styleVar (pretty x)
 
 instance ParseF EVarF where
-    parseF' PCNotQ (SAtom (SSymbol x)) = pure $ EVarF' x
+    parseF' PCNotQ (SAtom (SSymbol (Name x))) = pure $ EVarF' x
     parseF' _ _ = empty
 
 -- | Application
@@ -468,7 +469,7 @@ instance PrettyF DValF where
     prettyF' (DValF' x e) = parens $ vsep [ styleKw "val" <+> pretty x, indent 2 e ]
 
 instance ParseF DValF where
-    parseF' PCTop (SList ["val", SAtom (SSymbol x), e]) =
+    parseF' PCTop (SList ["val", SAtom (SSymbol (Name x)), e]) =
         pure $ DValF' x (PCExp, e)
     parseF' PCTop (SCons "val" _) = fail "Invalid val syntax"
     parseF' _ _ = empty
@@ -482,11 +483,11 @@ instance PrettyF DDefineF where
          in vsep [styleKw "define" <+> styleVar (pretty f) <+> args', indent 2 body]
 
 instance ParseF DDefineF where
-    parseF' PCTop (SList ("define" : SAtom (SSymbol f) : SList args : body))
+    parseF' PCTop (SList ("define" : SAtom (SSymbol (Name f)) : SList args : body))
       | Just args' <- traverse isSymbol args =
         pure $ DDefineF' f args' (PCExp, SList ("begin" : body))
         where
-            isSymbol (SAtom (SSymbol x)) = Just x
+            isSymbol (SAtom (SSymbol (Name x))) = Just x
             isSymbol _ = Nothing
     parseF' PCTop (SCons "define" _) = fail "Invalid define syntax"
     parseF' _ _ = empty

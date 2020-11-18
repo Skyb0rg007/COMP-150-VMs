@@ -8,6 +8,8 @@
    Maintainer:  skyler.soss@gmail.com
    Stability:   experimental
    Portability: ghc-8.8.4
+
+   This typeclass corresponds to the VScheme projection functions
 -}
 
 module Uft.Pretty
@@ -87,10 +89,10 @@ astToAnsi :: ASTStyle -> AnsiStyle
 astToAnsi _ = mempty
 
 -- | Typeclass for pretty-printing
-class PrettyF f where
+class Functor f => PrettyF f where
     prettyF' :: f (Doc ASTStyle) -> Doc ASTStyle
 
-instance Apply PrettyF r => PrettyF (Sum r) where
+instance Applies '[Functor, PrettyF] r => PrettyF (Sum r) where
     prettyF' = apply @PrettyF prettyF'
     {-# INLINE prettyF' #-}
 

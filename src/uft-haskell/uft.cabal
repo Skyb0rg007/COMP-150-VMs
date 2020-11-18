@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: faed716fdfef89a3d3bc589a5a47920ae24d4f366cae65461d170a91403273ad
+-- hash: 2fa33e2beb0b3c6905386488e03bee7c58c3a915a3a55967c352f25b04c4c64e
 
 name:           uft
 version:        0.1.0.0
@@ -29,6 +29,12 @@ library
       Data.DList.NonEmpty
       Data.Sum
       Data.Sum.TH
+      Language.Scheme.L0.Ast
+      Language.Scheme.L0.Parse
+      Language.Scheme.L1.Ast
+      Language.Scheme.L1.MacroExpand
+      Language.Scheme.Numerics
+      Type.Hyper
       Type.List
       Type.OpenADT
       Type.OpenADT.TH
@@ -37,6 +43,9 @@ library
       Uft.Asm.ToVO
       Uft.KNormal.ClosureConvert
       Uft.KNormal.Types
+      Uft.Language.L0
+      Uft.Macroexpand
+      Uft.Naming
       Uft.Parse
       Uft.Pretty
       Uft.Primitives

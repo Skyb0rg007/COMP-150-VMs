@@ -17,10 +17,10 @@ module Type.OpenADT.TH
     ) where
 
 import           Control.Monad
-import           Data.Foldable          (foldl')
+import           Data.Foldable       (foldl')
 import           Language.Haskell.TH
-import           Type.OpenADT
-import           Uft.Util               (unsnoc)
+import           Type.OpenADT        hiding (Type)
+import           Uft.Util            (unsnoc)
 
 deriveOpenADT :: Name -> Q [Dec]
 deriveOpenADT name = do

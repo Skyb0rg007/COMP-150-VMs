@@ -27,6 +27,7 @@ module Type.OpenADT
 import           Data.Functor.Foldable as X (Fix (..), ana, cata, hylo, unfix, para, apo, zygo)
 import           Data.Functor.Foldable
 import           Data.Sum              as X
+import           Data.Kind             as X (Type)
 import           Type.List             as X
 
 type OpenADT r = Fix (Sum r)

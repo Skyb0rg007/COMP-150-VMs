@@ -27,6 +27,7 @@ import qualified Data.Text          as Text
 import           Data.Word          (Word8)
 import           GHC.Generics       (Generic)
 import           Numeric            (showGFloat, showIntAtBase)
+import           Uft.Naming
 
 -- | intToDigit, but using upper-case letters
 intToDigit' :: Int -> Char
@@ -129,7 +130,7 @@ showSVector xs s = '#' : showSList xs s
 data SAtom
     = SChar Char
     | SString Text
-    | SSymbol Text
+    | SSymbol Name
     | SBool Bool
     | SNum Double
     | SByteVector [Word8]
@@ -158,7 +159,7 @@ instance Show SAtom where
         SNum n -> showSNum n
         SBool b  -> showSBool b
         SString s -> showSString (Text.unpack s)
-        SSymbol s -> showSSymbol (Text.unpack s)
+        SSymbol name -> showSSymbol (show name)
         SByteVector bv -> showSByteVector bv
 
 -- | Full S-expressions

@@ -19,6 +19,7 @@ import           Uft.Pretty
 import           Uft.SExpr.Types
 import           Uft.Util
 import           Uft.Primitives
+import           Uft.Naming
 import           Uft.VScheme.Types
 
 -- | Variants that are part of the UScheme language datatype
@@ -60,7 +61,7 @@ instance Pretty n => PrettyF (EVarLocalF n) where
     prettyF' (EVarLocalF' n) = styleVar (pretty n)
 
 instance ParseF (EVarLocalF Text) where
-    parseF' PCNotQ (SAtom (SSymbol x)) =
+    parseF' PCNotQ (SAtom (SSymbol (Name x))) =
         pure $ EVarLocalF' x
     parseF' _ _ = empty
 
@@ -73,7 +74,7 @@ instance Pretty n => PrettyF (ESetLocalF n) where
         "set!" <+> pretty x <+> e
 
 instance ParseF (ESetLocalF Text) where
-    parseF' PCNotQ (SList ["set", SAtom (SSymbol x), e]) =
+    parseF' PCNotQ (SList ["set", SAtom (SSymbol (Name x)), e]) =
         pure $ ESetLocalF' x (PCExp, e)
     parseF' _ _ = empty
 
@@ -85,7 +86,7 @@ instance PrettyF EVarGlobalF where
     prettyF' (EVarGlobalF' n) = styleVar (pretty n)
 
 instance ParseF EVarGlobalF where
-    parseF' PCNotQ (SList ["global", SAtom (SSymbol x)]) =
+    parseF' PCNotQ (SList ["global", SAtom (SSymbol (Name x))]) =
         pure $ EVarGlobalF' x
     parseF' _ _ = empty
 
@@ -98,7 +99,7 @@ instance PrettyF ESetGlobalF where
         "set!" <+> pretty x <+> e
 
 instance ParseF ESetGlobalF where
-    parseF' PCNotQ (SList ["set", SList ["global", SAtom (SSymbol x)], e]) =
+    parseF' PCNotQ (SList ["set", SList ["global", SAtom (SSymbol (Name x))], e]) =
         pure $ ESetGlobalF' x (PCExp, e)
     parseF' _ _ = empty
 
