@@ -30,6 +30,8 @@ VMState newstate(void) {
     }
     vm->globals = VTable_new(HINT_NUM_GLOBALS);
     vm->window = 0;
+    vm->current_instrnum = 0;
+    vm->current_fun = NULL;
     vector_init(&vm->literals);
     vm->num_activations = 0;
     return vm;

@@ -43,7 +43,7 @@
 /********************************* HEAP PAGES ********************************/
 
 #ifdef SMALLHEAP
-  #define PAGESIZE 600   // bytes in one page, just big enough for globals table
+  #define PAGESIZE 1200   // bytes in one page, just big enough for globals table
 #else
   #define PAGESIZE (32*1024)   // bytes in one page
 #endif
@@ -588,244 +588,274 @@ static void scan_value(Value v) {
 }
 
 static void scan_activation(struct Activation *p) {
-  assert(p);
-  p->fun = forward_function(p->fun, NULL);
+    assert(p);
+    p->fun = forward_function(p->fun, NULL);
 }
 
 static void scan_vmstate(struct VMState *vm) {
-  assert(vm);
-  /* assert(0 && "you have to implement this one"); */
-  // see book chapter page 265 about roots
+    assert(vm);
 
-  // roots: all registers that can affect future computation
-  //    (these hold local variables and formal paramters as on page 265)
-  //    (hint: don't scan high-numbered registers that can't
-  //     affect future computations because they aren't used)
+    // roots: all registers that can affect future computation
+    //    (these hold local variables and formal paramters as on page 265)
+    //    (hint: don't scan high-numbered registers that can't
+    //     affect future computations because they aren't used)
 
-  int nregs = vm->activations[vm->num_activations - 1].fun->nregs;
-  for (int i = 0; i < vm->window + nregs; i++) {
-      forward_payload(&vm->registers[i]);
-  }
+    int nregs = vm->activations[vm->num_activations - 1].fun->nregs;
+    for (int i = 0; i < vm->window + nregs; i++) {
+        forward_payload(&vm->registers[i]);
+    }
 
-  // roots: all literal slots that are in use
-  for (int i = 0; i < vector_size(&vm->literals); i++) {
-      forward_payload(&vector_at(&vm->literals, i));
-  }
+    // roots: all literal slots that are in use
+    for (int i = 0; i < vector_size(&vm->literals); i++) {
+        forward_payload(&vector_at(&vm->literals, i));
+    }
 
-  // roots: each function on the call stack
-  for (int i = 0; i < vm->num_activations; i++) {
-      scan_activation(&vm->activations[i]);
-  }
+    // roots: each function on the call stack
+    for (int i = 0; i < vm->num_activations; i++) {
+        scan_activation(&vm->activations[i]);
+    }
 
-  // root: the currently running function (which might not be on the call stack)
+    // root: the currently running function (which might not be on the call stack)
+    vm->current_fun = forward_function(vm->current_fun, NULL);
 
-  // root: the global-variable table
-  //    (hint: copy the table to to-space,
-  //     then scan it with `mkTableValue` and `scan_value`)
+    // root: the global-variable table
+    //    (hint: copy the table to to-space,
+    //     then scan it with `mkTableValue` and `scan_value`)
 
-  // root: any other field of `struct VMState` that could lead to a `Value`
+    vm->globals = forward_table(vm->globals, NULL);
+
+    // root: any other field of `struct VMState` that could lead to a `Value`
 
 }
 
 extern void gc(struct VMState *vm) {
-  assert(vm);
-  assert(0 && "gc left as exercise");
+    assert(vm);
+    assert(0 && "gc left as exercise");
 
-  /* Narrative sketch of the algorithm (see page 266):
+    /* Narrative sketch of the algorithm (see page 266):
 
-      1. Capture the list of allocated pages from `current`,
-         and reset `current` include just one available page.
-         I recommend capturing the list of allocated pages
-         in a local variable called `fromspace`.
+       1. Capture the list of allocated pages from `current`,
+       and reset `current` include just one available page.
+       I recommend capturing the list of allocated pages
+       in a local variable called `fromspace`. 
 
-      2. Set flag `gc_in_progress` (so statistics are tracked correctly).
+     */
 
-      3. Color all the roots gray using `scan_vmstate`.
+    Page fromspace = current;
+    current = NULL;
+    take_available_page();
 
-      4. While the gray stack is not empty, pop a value and scan it.
+    /*
+       2. Set flag `gc_in_progress` (so statistics are tracked correctly).
+     */
+    gc_in_progress = true;
 
-      5. Call `VMString_drop_dead_strings()`.
+    /*
+       3. Color all the roots gray using `scan_vmstate`.
+     */
+    scan_vmstate(vm);
 
-      6. Take the pages captured in step 1 and make them available.
+    /*
+       4. While the gray stack is not empty, pop a value and scan it.
+     */
+    while (!VStack_isempty(gray))
+        scan_value(VStack_pop(gray));
 
-      7. Use `growheap` to acquire more available pages until the
-         ratio of heap size to live data meets what you get from
-         `target_gamma`.  (The amount of live data is the number of
-         pages copied to `current` in steps 3 and 4.)
+    /*
+       5. Call `VMString_drop_dead_strings()`.
+     */
+    VMString_drop_dead_strings();
 
-      8. Update counter `total.collections` and
-         flags `gc_needed` and `gc_in_progress`.
+    /*
+       6. Take the pages captured in step 1 and make them available.
+     */
+    make_available(fromspace);
 
-      9. If `svmdebug_value("gcstats")` is set and contains a + sign, 
-         print statistics as suggested by exercise 2 on page 299.
+    /*
+       7. Use `growheap` to acquire more available pages until the
+       ratio of heap size to live data meets what you get from
+       `target_gamma`.  (The amount of live data is the number of
+       pages copied to `current` in steps 3 and 4.)
+     */
+    double gamma = target_gamma(vm->globals);
+    growheap(gamma, count.current.pages);
 
-   */
+    /*
+       8. Update counter `total.collections` and
+       flags `gc_needed` and `gc_in_progress`.
+     */
+    total.collections++;
+    gc_in_progress = false;
+    gc_needed = false;
 
-  // functions that will be used:
-  (void) scan_vmstate;   // in step 3
-  (void) scan_value;     // in step 4
-  (void) make_available; // in step 6
-  (void) target_gamma;   // in step 7
-  (void) growheap;       // in step 7
+    /*
+       9. If `svmdebug_value("gcstats")` is set and contains a + sign, 
+       print statistics as suggested by exercise 2 on page 299.
+     */
+    if (svmdebug_value("gcstats") && strchr(svmdebug_value("gcstats"), '+')) {
+        fprintf(stderr, "Heap contains %d pages of which %d are live (ratio %.2f)\n",
+                count.available.pages + count.current.pages, count.current.pages,
+                (double)(count.available.pages + count.current.pages) / (double) count.current.pages);
+        fprint(stderr, "%d of %d objects holding %, of %, requested bytes survived\n",
+                -1, -1, -1, -1);  // you fill in here
+        fprintf(stderr, "Survival rate is %.1f%% of objects and %.1f%% of bytes\n",
+                -1.0, -1.0);  // you fill in here
+    }
 
-  if (svmdebug_value("gcstats") && strchr(svmdebug_value("gcstats"), '+')) {
-    fprintf(stderr, "Heap contains %d pages of which %d are live (ratio %.2f)\n",
-            count.available.pages + count.current.pages, count.current.pages,
-            (double)(count.available.pages + count.current.pages) / (double) count.current.pages);
-    fprint(stderr, "%d of %d objects holding %, of %, requested bytes survived\n",
-            -1, -1, -1, -1);  // you fill in here
-    fprintf(stderr, "Survival rate is %.1f%% of objects and %.1f%% of bytes\n",
-            -1.0, -1.0);  // you fill in here
-  }
-  
 }
 
 static void growheap(double gamma, int nlive) {
-  (void) gamma;
-  (void) nlive;
-  // eventually you'll add code here to enlarge the heap
-  // and to update `availability_floor`
+    bool grew = false;
+    while (PAGESIZE * (count.current.pages * count.available.pages)
+            < count.current.bytes_requested * gamma) {
+        grew = true;
+        acquire_available_page();
+    }
+    if (grew && svmdebug_value("growheap")) {
+        fprintf(stderr, "Grew heap to %d pages\n",
+                count.current.pages + count.available.pages);
+    }
 }
 
 
 /********************  PAGE FUNCTIONS **********************************/
 
 bool onpagelist(void *p, Page page) {
-  for ( ; page; page = page->link) {
-    char *first = (char *)&page->a;
-    char *limit = (char *)page + PAGESIZE;
-    char *test = p;
-    if (first <= test && test < limit)
-      return true;
-  }
-  return false;
+    for ( ; page; page = page->link) {
+        char *first = (char *)&page->a;
+        char *limit = (char *)page + PAGESIZE;
+        char *test = p;
+        if (first <= test && test < limit)
+            return true;
+    }
+    return false;
 }
 
 
 
 
 static void acquire_available_page(void) {
-  Page p = malloc(PAGESIZE);
-  assert(p);
-  VALGRIND_CREATE_MEMPOOL(p, 0, 0);
-  VALGRIND_CREATE_BLOCK(p, PAGESIZE, "managed page");
-  p->link = available;
-  available = p;
-  count.available.pages++;
-  gcprintf("Acquired a new page\n");
+    Page p = malloc(PAGESIZE);
+    assert(p);
+    VALGRIND_CREATE_MEMPOOL(p, 0, 0);
+    VALGRIND_CREATE_BLOCK(p, PAGESIZE, "managed page");
+    p->link = available;
+    available = p;
+    count.available.pages++;
+    gcprintf("Acquired a new page\n");
 }
 
 
 static Page newpage(void) {
-  // returns a page from the `available` list, or if necessary from the OS
-  if (0 && current != NULL) {
-    heap_shutdown();
-    extern void name_cleanup(void);
-    name_cleanup();
-    Vmstring_finish();
-    extern VMState *globalvmp;
-    freestatep(globalvmp);
+    // returns a page from the `available` list, or if necessary from the OS
+    if (0 && current != NULL) {
+        heap_shutdown();
+        extern void name_cleanup(void);
+        name_cleanup();
+        Vmstring_finish();
+        extern VMState *globalvmp;
+        freestatep(globalvmp);
 
-    exit(0);
-  }
-  if (available == NULL)
-    acquire_available_page();
+        exit(0);
+    }
+    if (available == NULL)
+        acquire_available_page();
 
-  assert(available);
-  Page new = available;
-  available = available->link;
-  count.available.pages--;
-  if (count.available.pages <= availability_floor)
-    gc_needed = true;
-  return new;
+    assert(available);
+    Page new = available;
+    available = available->link;
+    count.available.pages--;
+    if (count.available.pages <= availability_floor)
+        gc_needed = true;
+    return new;
 }
 
 static void take_available_page(void) {
-  Page new = newpage();
-  new->link = current;
-  current = new;
-  assert(current);
-  count.current.pages++;
-  next  = (char *)&current->a;
-  limit = (char *)current + PAGESIZE;
+    Page new = newpage();
+    new->link = current;
+    current = new;
+    assert(current);
+    count.current.pages++;
+    next  = (char *)&current->a;
+    limit = (char *)current + PAGESIZE;
 }
 
 static int free_pages(Page p) { // returns # of pages freed
-  int count = 0;
-  while (p) {
-    count++;
-    Page next = p->link;
-    VALGRIND_DESTROY_MEMPOOL(p);
-    free(p);
-    p = next;
-  }
-  return count;
+    int count = 0;
+    while (p) {
+        count++;
+        Page next = p->link;
+        VALGRIND_DESTROY_MEMPOOL(p);
+        free(p);
+        p = next;
+    }
+    return count;
 }
 
 
 /************************** RANDOM UTILITY FUNCTIONS **************************/
 
 static int make_invalid_and_stomp(Page pages) {
-  int invalidated = 0;
-  while (pages) {
-    Page p = pages;
-    pages = p->link;
-    p->link = invalid;
-    invalid = p;
-    memset(p+1, 0xff, PAGESIZE - sizeof(*p));
-    VALGRIND_MAKE_MEM_NOACCESS(p, PAGESIZE);
-    invalidated++;
-  }
-  return invalidated;
+    int invalidated = 0;
+    while (pages) {
+        Page p = pages;
+        pages = p->link;
+        p->link = invalid;
+        invalid = p;
+        memset(p+1, 0xff, PAGESIZE - sizeof(*p));
+        VALGRIND_MAKE_MEM_NOACCESS(p, PAGESIZE);
+        invalidated++;
+    }
+    return invalidated;
 }
 
 static int make_available(Page pages) {
-  int reclaimed = 0;
-  while (pages) {
-    Page p = pages;
-    pages = p->link;
-    VALGRIND_DESTROY_MEMPOOL(p);
-    VALGRIND_CREATE_MEMPOOL(p, 0, 0);
-    p->link = available;
-    available = p;
-    reclaimed++;
-    count.available.pages++;
-  }
-  return reclaimed;
+    int reclaimed = 0;
+    while (pages) {
+        Page p = pages;
+        pages = p->link;
+        VALGRIND_DESTROY_MEMPOOL(p);
+        VALGRIND_CREATE_MEMPOOL(p, 0, 0);
+        p->link = available;
+        available = p;
+        reclaimed++;
+        count.available.pages++;
+    }
+    return reclaimed;
 }
 
 void search(const char *what, void *p, Page fromspace) {
-  bool found = 0;
-  if (onpagelist(p, current)) {
-    found = 1;
-    fprintf(stderr, "%s on correct (current) list\n", what);
-  }
-  if (fromspace && onpagelist(p, fromspace)) {
-    found = 1;
-    fprintf(stderr, "%s stranded in fromspace\n", what);
-  }
-  if (onpagelist(p, available)) {
-    found = 1;
-    fprintf(stderr, "%s is available?" "?!\n", what);
-  }
-  if (!found)
-    fprintf(stderr, "Cannot find %s anywhere?\n", what);
+    bool found = 0;
+    if (onpagelist(p, current)) {
+        found = 1;
+        fprintf(stderr, "%s on correct (current) list\n", what);
+    }
+    if (fromspace && onpagelist(p, fromspace)) {
+        found = 1;
+        fprintf(stderr, "%s stranded in fromspace\n", what);
+    }
+    if (onpagelist(p, available)) {
+        found = 1;
+        fprintf(stderr, "%s is available?" "?!\n", what);
+    }
+    if (!found)
+        fprintf(stderr, "Cannot find %s anywhere?\n", what);
 }
 void xsearch(const char *what, void *p) {
-  search(what, p, NULL);
+    search(what, p, NULL);
 }
 
 
 static double target_gamma(VTable_T globals) {
-  double gamma = 2.1; // very conservative default
-  Value vmgamma = VTable_get(globals, mkStringValue(Vmstring_newc("&gamma")));
-  if (vmgamma.tag == Number) {
-    gamma = vmgamma.n;
-  }
-  if (gamma >= 100.0)
-    gamma = gamma / 100.0;
-  if (gamma < 2.0)
-    gamma = 2.0;
+    double gamma = 2.1; // very conservative default
+    Value vmgamma = VTable_get(globals, mkStringValue(Vmstring_newc("&gamma")));
+    if (vmgamma.tag == Number) {
+        gamma = vmgamma.n;
+    }
+    if (gamma >= 100.0)
+        gamma = gamma / 100.0;
+    if (gamma < 2.0)
+        gamma = 2.0;
 
-  return gamma;
+    return gamma;
 }

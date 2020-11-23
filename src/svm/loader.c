@@ -27,6 +27,7 @@
 #include "svmdebug.h"
 #include "vmstate.h"
 #include "vmheap.h"
+#include "vmsizes.h"
 #include "vmstring.h"
 #include "value.h"
 
@@ -61,7 +62,8 @@ static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input)
 
 static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input) {
 
-    struct VMFunction *fun = vmalloc_raw(sizeof *fun + (count + 1) * sizeof(Instruction));
+    /* struct VMFunction *fun = vmalloc_raw(sizeof *fun + (count + 1) * sizeof(Instruction)); */
+    VMNEW(struct VMFunction *, fun, vmsize_fun(count + 1));
     assert(fun);
     unsigned maxreg = 0;
     for (int i = 0; i < count; i++) {

@@ -7,6 +7,7 @@
 /* XXX: comment mentioning names */
 struct Activation {
     struct VMFunction *fun;
+    int pc;
     int destreg;
     int window;
 };

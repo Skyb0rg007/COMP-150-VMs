@@ -2,49 +2,49 @@ COMP 150VM Homework Submission
 
 What person or group is submitting this homework?
 
-  - 
+  - Skye Soss
 
 What work are you proud of?
 
-  - 
+  - My opcode.h implementation, was from a previous hw but useful
 
 What code would you like help improving?  Are there bugs you'd like
 help finding during code review?
 
-  - 
+  - N/A
 
 What code, if any, would you especially like the course staff to
 review?  Why?
 
-  -
+  - If possible my parsing implementation. There's a leak in there and idk where.
 
 In this course, all code may be shared freely.  Aside from code that
 is distributed with the assignment, does your submission contain any
 other code that you got from someone else?  If so, what code is it
 (file names and line numbers please) and who supplied it?
 
-  - 
+  - I used Sayak and Aditi's uft to generate the predef.vo I used for testing.
 
 In response to last week's code review, have you made any material
 changes?  What were they?  By file name and line number, where are
 they found in the code?  If you remember, who helped you during code
 review?
 
-  - 
+  - N/A
 
 
 We have a plenary code review tomorrow.  Are you willing to present
 (as a group, if applicable)?
 
-  - 
+  - No.
 
 Supposing you are not selected to present at tomorrow's plenary code
 review, what code would you like to see presented?  What would you
 learn the most from?
 
-  - 
+  - The scan_activation and vmrun save + load
 
 Again supposing you are not selected to present, who in your group is
 willing to serve on the review panel?
 
-  - 
+  - I can, but I'd rather not this week.

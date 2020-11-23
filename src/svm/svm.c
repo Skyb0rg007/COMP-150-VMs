@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
       }
     }
     freestatep(&vm);
+    puts("Shutting down heap");
     heap_shutdown();
     name_cleanup();
     Vmstring_finish();

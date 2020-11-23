@@ -29,7 +29,7 @@ DEPS := $(OBJ:.o=.d)
 
 CPPFLAGS += -MMD -MP
 
-CFLAGS = -std=c11 -pedantic -Wall -Wextra -g -I/usr/include
+CFLAGS = -std=c11 -pedantic -Wall -Wextra -g -I/usr/include -fsanitize=leak
 
 .PHONY: all obj clean
 all: $(EXE)

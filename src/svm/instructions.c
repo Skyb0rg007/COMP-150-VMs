@@ -36,6 +36,16 @@ instruction_info instructions[] = {
   { "mkclosure", MkClosure, parseR3, "rX := closure[rY, Z]" },
   { "getclslot", GetClSlot, parseR3, "rX := rY.Z" },
   { "setclslot", SetClSlot, parseR3, "rX.Y := Z" },
+  { "cons", Cons, parseR3, "rX := cons rY rZ" },
+  { "car", Car, parseR2, "rX := car rY" },
+  { "cdr", Cdr, parseR2, "rX := cdr rY" },
+  { "<", Cdr, parseR3, "rX := rY < rZ" },
+  { ">", Cdr, parseR3, "rX := rY > rZ" },
+  { "null?", Null_Chk, parseR2, "rX := null? rY" },
+  { "symbol?", Symbol_Chk, parseR2, "rX := symbol? rY" },
+  { "number?", Number_Chk, parseR2, "rX := number? rY" },
+  { "boolean?", Boolean_Chk, parseR2, "rX := boolean? rY" },
+  { "gc", Gc, parseR0, "gc" },
 };
 
 int number_of_instructions = sizeof(instructions) / sizeof(instructions[0]);

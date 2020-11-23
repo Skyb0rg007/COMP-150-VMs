@@ -43,6 +43,20 @@ void vmrun(VMState vm, struct VMFunction *fun) {
     /* The current opcode */
     Opcode op;
 
+    #define VMSAVE() do {                                          \
+        vm->current_instrnum = vm->current_fun->instructions - ip; \
+    } while (0)
+
+    #define VMLOAD() do {                                          \
+        ip = vm->current_fun->instructions + vm->current_instrnum; \
+    } while (0)
+
+    #define GC() do { \
+        VMSAVE();     \
+        gc(vm);       \
+        VMLOAD();     \
+    } while (0)
+
     /* This code is run before every instruction */
     #define SETUP() do {               \
         i = *ip++;                     \
@@ -50,7 +64,7 @@ void vmrun(VMState vm, struct VMFunction *fun) {
         assert(op >= 0 && op < Unimp); \
     } while (0)
 
-    #define USE_COMPUTED_GOTO
+    /* #define USE_COMPUTED_GOTO */
 #ifdef USE_COMPUTED_GOTO
     /* Define the jump-table mapping opcodes to labels
      * Use the TitleCase names to match case versions
@@ -150,6 +164,10 @@ CASE(Goto):
         {
             int32_t offset = iXYZ(i);
             ip += offset;
+
+            if (offset < 0) {
+                GC();
+            }
             BREAK;
         }
 CASE(If):
@@ -253,9 +271,11 @@ CASE(Call):
             int lastarg = uZ(i);
             struct VMFunction *fun = AS_VMFUNCTION(vm, vmstate_get_reg(vm, funreg));
             assert(lastarg - funreg == fun->arity);
-            vmstate_store_act(vm, ip, destreg);
+            vmstate_store_act(vm, fun, destreg);
             vm->window += funreg;
             ip = fun->instructions;
+
+            GC();
             BREAK;
         }
 CASE(Return):
@@ -272,13 +292,15 @@ CASE(Tailcall):
             int lastarg = uY(i);
             int num_args = lastarg - funreg;
             Value funVal = vmstate_get_reg(vm, funreg);
-            struct VMFunction *fun = AS_VMFUNCTION(vm, funVal);
+            struct VMFunction *fun = GCVALIDATE(AS_VMFUNCTION(vm, funVal));
             /* vmstate_set_reg(vm, 0, funVal); */
             /* XXX: bounds checking before memmove */
             memmove(vm->registers + vm->window,
                     vm->registers + vm->window + funreg,
                     (num_args + 1) * sizeof(Value));
             ip = fun->instructions;
+
+            GC();
             BREAK;
         }
 CASE(Error):
@@ -303,7 +325,7 @@ CASE(GetClSlot):
             int reg1 = uX(i);
             int reg2 = uY(i);
             int reg3 = uZ(i);
-            struct VMClosure *closure = AS_CLOSURE(vm, vmstate_get_reg(vm, reg2));
+            struct VMClosure *closure = GCVALIDATE(AS_CLOSURE(vm, vmstate_get_reg(vm, reg2)));
             int index = AS_NUMBER(vm, vmstate_get_reg(vm, reg3));
             vmstate_set_reg(
                     vm,
@@ -316,7 +338,7 @@ CASE(SetClSlot):
             int reg1 = uX(i);
             int reg2 = uY(i);
             int reg3 = uZ(i);
-            struct VMClosure *closure = AS_CLOSURE(vm, vmstate_get_reg(vm, reg1));
+            struct VMClosure *closure = GCVALIDATE(AS_CLOSURE(vm, vmstate_get_reg(vm, reg1)));
             int index = AS_NUMBER(vm, vmstate_get_reg(vm, reg3));
             closure->captured[index] = vmstate_get_reg(vm, reg2);
             BREAK;
@@ -327,7 +349,7 @@ CASE(MkClosure):
             int reg2 = uY(i);
             int reg3 = uZ(i);
             int ncaptured = reg3 - reg2;
-            struct VMFunction *f = AS_VMFUNCTION(vm, vmstate_get_reg(vm, reg2));
+            struct VMFunction *f = GCVALIDATE(AS_VMFUNCTION(vm, vmstate_get_reg(vm, reg2)));
             VMNEW(struct VMClosure *, closure, sizeof *closure + ncaptured);
             closure->f = f;
             for (int i = 0; i < ncaptured; i++)
@@ -336,6 +358,63 @@ CASE(MkClosure):
                     vm,
                     reg1,
                     mkClosureValue(closure));
+            BREAK;
+        }
+CASE(Cons):
+        {
+            int reg1 = uX(i);
+            int reg2 = uY(i);
+            int reg3 = uZ(i);
+            VMNEW(struct VMBlock *, pair, sizeof *pair + sizeof(struct Value) * 2);
+            pair->nslots = 2;
+            pair->slots[0] = vmstate_get_reg(vm, reg2);
+            pair->slots[1] = vmstate_get_reg(vm, reg3);
+            vmstate_set_reg(vm, reg1, mkBlockValue(pair));
+            BREAK;
+        }
+CASE(Car):
+        {
+            int reg1 = uX(i);
+            int reg2 = uY(i);
+            struct VMBlock *pair = GCVALIDATE(AS_BLOCK(vm, vmstate_get_reg(vm, reg2)));
+            vmstate_set_reg(vm, reg1, pair->slots[0]);
+            BREAK;
+        }
+CASE(Cdr):
+        {
+            int reg1 = uX(i);
+            int reg2 = uY(i);
+            struct VMBlock *pair = GCVALIDATE(AS_BLOCK(vm, vmstate_get_reg(vm, reg2)));
+            vmstate_set_reg(vm, reg1, pair->slots[1]);
+            BREAK;
+        }
+CASE(Lt):
+        {
+            BREAK;
+        }
+CASE(Gt):
+        {
+            BREAK;
+        }
+CASE(Null_Chk):
+        {
+            BREAK;
+        }
+CASE(Symbol_Chk):
+        {
+            BREAK;
+        }
+CASE(Number_Chk):
+        {
+            BREAK;
+        }
+CASE(Boolean_Chk):
+        {
+            BREAK;
+        }
+CASE(Gc):
+        {
+            GC();
             BREAK;
         }
 DEFAULT:

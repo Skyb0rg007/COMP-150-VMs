@@ -35,7 +35,17 @@
     _(testeq, TestEq, TESTEQ)                \
     _(getclslot, GetClSlot, GETCLSLOT)       \
     _(setclslot, SetClSlot, SETCLSLOT)       \
-    _(mkclosure, MkClosure, MKCLOSURE)
+    _(mkclosure, MkClosure, MKCLOSURE)       \
+    _(cons, Cons, CONS)                      \
+    _(car, Car, CAR)                         \
+    _(cdr, Cdr, CDR)                         \
+    _(lt, Lt, LT)                            \
+    _(gt, Gt, GT)                            \
+    _(null_chk, Null_Chk, NULL_CHK)          \
+    _(symbol_chk, Symbol_Chk, SYMBOL_CHK)    \
+    _(number_chk, Number_Chk, NUMBER_CHK)    \
+    _(boolean_chk, Boolean_Chk, BOOLEAN_CHK) \
+    _(gc, Gc, GC)
 
 /* Define the enum using the title-case version of the opcode names */
 #define X(lower, title, upper) title,

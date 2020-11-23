@@ -75,11 +75,12 @@ static inline void vmstate_set_reg(VMState vm, int index, Value x)
     vm->registers[index] = x;
 }
 
-static inline void vmstate_store_act(VMState vm, Instruction *ip, int destreg) {
+static inline void vmstate_store_act(VMState vm, struct VMFunction *fun, int destreg) {
     struct Activation *a = &vm->activations[vm->num_activations++];
     if (vm->num_activations > NUM_ACTIVATIONS)
         runerror(vm, "Stack overflow!");
-    a->ip = ip;
+    a->fun = fun;
+    a->pc = 0;
     a->destreg = destreg;
     a->window = vm->window;
 }
@@ -88,7 +89,7 @@ static inline int vmstate_restore_act(VMState vm, Instruction **ip) {
     struct Activation *a = &vm->activations[--vm->num_activations];
     if (vm->num_activations < 0)
         runerror(vm, "Stack underflow!");
-    *ip = a->ip;
+    *ip = &a->fun->instructions[a->pc];
     vm->window = a->window;
     return a->destreg;
 }
