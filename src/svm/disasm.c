@@ -126,7 +126,7 @@ void idump(FILE *fp, VMState vm, int pc, Instruction I,
 const char *lastglobalset(struct VMState *vm, uint8_t reg, struct VMFunction *f, Instruction *pc) {
   while (--pc >= f->instructions) {
     Instruction i = *pc;
-    if (isgetglobal(opcode(i)) && uX(i) == reg) {
+    if ((opcode(i) == GetGlobal) && uX(i) == reg) {
       Value gname = literal_value(vm, uYZ(i));
       if (gname.tag == String) {
         return gname.s->bytes;

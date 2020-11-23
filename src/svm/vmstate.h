@@ -32,10 +32,12 @@ struct VMState {
     VTable_T globals;
     /* The literal pool */
     vector(Value) literals;
-    int num_activations;
+    struct VMFunction *current_fun;
+    int current_instrnum;
     /* VM registers */
     Value registers[NUM_REGISTERS];
     /* Activation records */
+    int num_activations;
     struct Activation activations[NUM_ACTIVATIONS];
     /* XXX: offset -> pointer */
     int window;

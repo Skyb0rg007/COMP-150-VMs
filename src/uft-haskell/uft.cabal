@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2fa33e2beb0b3c6905386488e03bee7c58c3a915a3a55967c352f25b04c4c64e
+-- hash: 2fc34cfc23dd7ba54152fd9cb8b8884c2568412267e129933cf359965a971e8d
 
 name:           uft
 version:        0.1.0.0
@@ -30,6 +30,8 @@ library
       Data.Sum
       Data.Sum.TH
       Language.Scheme.L0.Ast
+      Language.Scheme.L0.MacroExpand.Expand
+      Language.Scheme.L0.MacroExpand.SyntaxEnv
       Language.Scheme.L0.Parse
       Language.Scheme.L1.Ast
       Language.Scheme.L1.MacroExpand
@@ -62,7 +64,7 @@ library
       Paths_uft
   hs-source-dirs:
       src
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia DeriveAnyClass EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedLabels OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia DeriveAnyClass EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedLabels OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
   build-tools:
       alex
@@ -74,15 +76,18 @@ library
     , bimap
     , binary
     , bytestring
+    , comonad
     , constraints
     , containers
     , deepseq
     , deriving-compat
     , dlist
+    , free
     , generic-data
     , hashable
     , lens
     , lens-action
+    , logict
     , megaparsec
     , monad-control
     , mtl
@@ -105,10 +110,11 @@ library
 executable uft-exe
   main-is: Main.hs
   other-modules:
+      OldMain
       Paths_uft
   hs-source-dirs:
       app
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia DeriveAnyClass EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedLabels OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia DeriveAnyClass EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedLabels OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array
@@ -117,15 +123,18 @@ executable uft-exe
     , bimap
     , binary
     , bytestring
+    , comonad
     , constraints
     , containers
     , deepseq
     , deriving-compat
     , dlist
+    , free
     , generic-data
     , hashable
     , lens
     , lens-action
+    , logict
     , megaparsec
     , monad-control
     , mtl
@@ -155,7 +164,7 @@ test-suite uft-test
       Paths_uft
   hs-source-dirs:
       test
-  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia DeriveAnyClass EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedLabels OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
+  default-extensions: BangPatterns ConstraintKinds DataKinds DefaultSignatures DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveTraversable DerivingStrategies DerivingVia DeriveAnyClass EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase NamedFieldPuns OverloadedLabels OverloadedStrings PatternSynonyms PolyKinds RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators ViewPatterns
   ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
@@ -165,16 +174,19 @@ test-suite uft-test
     , bimap
     , binary
     , bytestring
+    , comonad
     , constraints
     , containers
     , deepseq
     , deriving-compat
     , dlist
+    , free
     , generic-data
     , hashable
     , hspec
     , lens
     , lens-action
+    , logict
     , megaparsec
     , monad-control
     , mtl

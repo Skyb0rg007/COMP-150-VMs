@@ -35,8 +35,9 @@
  */
 void vmrun(VMState vm, struct VMFunction *fun) {
 
+    vm->current_fun = fun;
     /* Points to the current instruction pointer */
-    Instruction *ip = fun->instructions;
+    Instruction *ip = vm->current_fun->instructions + vm->current_instrnum;
     /* The current instruction */
     Instruction i;
     /* The current opcode */

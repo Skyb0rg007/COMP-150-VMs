@@ -21,21 +21,26 @@ description:         Please see the README on GitHub at <https://github.com/Skyb
 dependencies:
 - base >= 4.7 && < 5
 - array
+- bifunctors
 - bimap
 - binary
 - bytestring
+- comonad
 - constraints
 - containers
 - deepseq
 - deriving-compat
 - dlist
+- free
 - generic-data
 - hashable
 - lens
+- lens-action
 - megaparsec
 - monad-control
 - mtl
 - ordered-containers
+- parser-combinators
 - prettyprinter
 - prettyprinter-ansi-terminal
 - recursion-schemes
@@ -48,9 +53,7 @@ dependencies:
 - transformers-base
 - unordered-containers
 - vector
-- bifunctors
-- lens-action
-- parser-combinators
+- logict
 # - souffle-haskell
 
 ghc-options:
@@ -80,6 +83,7 @@ default-extensions:
 - FlexibleInstances
 - FunctionalDependencies
 - GADTs
+- GeneralizedNewtypeDeriving
 - InstanceSigs
 - KindSignatures
 - LambdaCase

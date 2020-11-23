@@ -589,12 +589,12 @@ static void scan_value(Value v) {
 
 static void scan_activation(struct Activation *p) {
   assert(p);
-  assert(0 && "you have to implement this one");
+  p->fun = forward_function(p->fun, NULL);
 }
 
 static void scan_vmstate(struct VMState *vm) {
   assert(vm);
-  assert(0 && "you have to implement this one");
+  /* assert(0 && "you have to implement this one"); */
   // see book chapter page 265 about roots
 
   // roots: all registers that can affect future computation
@@ -602,10 +602,20 @@ static void scan_vmstate(struct VMState *vm) {
   //    (hint: don't scan high-numbered registers that can't
   //     affect future computations because they aren't used)
 
+  int nregs = vm->activations[vm->num_activations - 1].fun->nregs;
+  for (int i = 0; i < vm->window + nregs; i++) {
+      forward_payload(&vm->registers[i]);
+  }
+
   // roots: all literal slots that are in use
+  for (int i = 0; i < vector_size(&vm->literals); i++) {
+      forward_payload(&vector_at(&vm->literals, i));
+  }
 
   // roots: each function on the call stack
-  (void) scan_activation; // likely to be useful here
+  for (int i = 0; i < vm->num_activations; i++) {
+      scan_activation(&vm->activations[i]);
+  }
 
   // root: the currently running function (which might not be on the call stack)
 

@@ -61,7 +61,7 @@ static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input)
 
 static struct VMFunction *loadfun(VMState vm, int arity, int count, FILE *input) {
 
-    struct VMFunction *fun = vmalloc(sizeof *fun + (count + 1) * sizeof(Instruction));
+    struct VMFunction *fun = vmalloc_raw(sizeof *fun + (count + 1) * sizeof(Instruction));
     assert(fun);
     unsigned maxreg = 0;
     for (int i = 0; i < count; i++) {

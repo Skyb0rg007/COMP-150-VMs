@@ -122,7 +122,7 @@ static Value tokens_get_literal(Tokens *p, const char *original)
             return mkNumberValue((double)n);
         }
         case TDOUBLE: {
-            double n = tokens_get_number(p, original);
+            double n = tokens_get_signed_number(p, original);
             return mkNumberValue(n);
         }
         default: {

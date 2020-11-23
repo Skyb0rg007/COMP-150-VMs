@@ -6,7 +6,7 @@
 
 /* XXX: comment mentioning names */
 struct Activation {
-    Instruction *ip;
+    struct VMFunction *fun;
     int destreg;
     int window;
 };

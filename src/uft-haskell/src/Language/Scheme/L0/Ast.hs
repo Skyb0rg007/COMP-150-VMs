@@ -15,22 +15,25 @@ module Language.Scheme.L0.Ast
     ( module Language.Scheme.L0.Ast
     ) where
 
-import           Control.DeepSeq      (NFData)
-import           Data.Char            (chr, isAlphaNum, isPrint, ord)
+-- import           Control.Comonad
+-- import           Control.Comonad.Cofree
+import           Control.DeepSeq        (NFData)
+import           Data.Char              (chr, isAlphaNum, isPrint, ord)
 import           Data.Deriving
 import           Data.Functor.Classes
-import           Data.Hashable        (Hashable)
-import           Data.Kind            (Type)
-import           Data.List.NonEmpty   (NonEmpty ((:|)))
-import           Data.Monoid          (Endo (Endo, appEndo))
-import           Data.String          (IsString (fromString))
-import           Data.Text            (Text)
-import           Data.Text            (Text)
-import qualified Data.Text            as Text
-import           Data.Word            (Word8)
-import           GHC.Generics         (Generic)
-import           Numeric              (showGFloat, showIntAtBase)
-import           Text.Read            (Read (readPrec))
+-- import           Data.Functor.Foldable  (histo)
+import           Data.Hashable          (Hashable)
+import           Data.Kind              (Type)
+import           Data.List.NonEmpty     (NonEmpty ((:|)))
+import           Data.Monoid            (Endo (Endo, appEndo))
+import           Data.String            (IsString (fromString))
+import           Data.Text              (Text)
+import           Data.Text              (Text)
+import qualified Data.Text              as Text
+import           Data.Word              (Word8)
+import           GHC.Generics           (Generic)
+import           Numeric                (showGFloat, showIntAtBase)
+import           Text.Read              (Read (readPrec))
 import           Type.OpenADT
 import           Type.OpenADT.TH
 import           Uft.Pretty
@@ -40,7 +43,10 @@ import           Uft.Util
 -- These are needed because symbols can be any sequence of characters
 -- In addition, the original name of the symbol must be retained for the form (quote x)
 
-data Name = N Text (Maybe Int)
+data Name = N
+    { _name_base :: !Text
+    , _name_id   :: !(Maybe Int)
+    }
     deriving (Show, Eq, Ord, Read, Generic, NFData, Hashable)
 
 pattern Name :: Text -> Name
@@ -184,10 +190,19 @@ prettyL0
     :: forall r. (Applies '[Functor, PrettyF] r, '[EmptyF, PairF] :<: r)
     => OpenADT r
     -> Doc ASTStyle
-prettyL0 x =
-    case unlist x of
-      ([], x)     -> prettyF x
-      (xs, Empty) -> parens $ hsep (map prettyF xs)
-      (xs, x')    -> parens $ hsep (map prettyF xs ++ [".", prettyF x'])
+prettyL0 = parenIfPair . cata alg where
+    -- normal = 0
+    -- empty  = 1
+    -- pair   = 2
+    parenIfPair :: (Int, Doc ASTStyle) -> Doc ASTStyle
+    parenIfPair (2, d) = parens d
+    parenIfPair (_, d) = d
+    alg :: Sum r (Int, Doc ASTStyle) -> (Int, Doc ASTStyle)
+    alg = \case
+        PairF a (1, _) -> (2, parenIfPair a)
+        PairF a (2, b) -> (2, parenIfPair a <+> b)
+        PairF a (_, b) -> (2, parenIfPair a <+> "." <+> b)
+        EmptyF         -> (1, "()")
+        x              -> (0, prettyF' (fmap snd x))
 
 

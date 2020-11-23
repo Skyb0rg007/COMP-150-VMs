@@ -57,6 +57,12 @@ type L1 =
      , ValF
      ]
 
+newtype VarLocalF (a :: Type) = VarLocalF' Name
+    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
+
+newtype VarGlobalF (a :: Type) = VarGlobalF' Text
+    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
+
 data LambdaF a = LambdaF' [Name] [a]
     deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
 
@@ -75,7 +81,10 @@ data LetRecStarF a = LetRecStarF' [(Name, a)] [a]
 newtype BeginF a = BeginF' [a]
     deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
 
-data SetF a = SetF' Name a
+data SetLocalF a = SetLocalF' Name a
+    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
+
+data SetGlobalF a = SetGlobalF' Text a
     deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
 
 data ApplyF a = ApplyF' a [a]
@@ -88,8 +97,21 @@ data ValF a = ValF' Name a
     deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
 
 -- * Deriving stuff
--- derive [deriveOpenADT, deriveShow1, deriveEq1, deriveOrd1, deriveRead1]
-    -- [''SymbolF]
+derive [deriveOpenADT, deriveShow1, deriveEq1, deriveOrd1, deriveRead1]
+    [ ''VarLocalF
+    , ''VarGlobalF 
+    , ''LambdaF 
+    , ''LetF
+    , ''LetStarF
+    , ''LetRecF
+    , ''LetRecStarF
+    , ''BeginF 
+    , ''SetLocalF 
+    , ''SetGlobalF 
+    , ''ApplyF 
+    , ''DefineF 
+    , ''ValF
+    ]
 
 -- instance PrettyF SymbolF where
     -- prettyF' (SymbolF' n) = prettyF' (L0.SymbolF' (Text.pack (show n)))
