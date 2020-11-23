@@ -59,3 +59,4 @@
 /solutions/
 /bin/vscheme.opt
 /bin/uft.old
+callgrind.out.*

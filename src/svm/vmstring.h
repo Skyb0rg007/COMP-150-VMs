@@ -79,6 +79,11 @@ VMString Vmstring_of_buffer(StringBuffer *bp);
   // interns the contents of the buffer and frees its memory
 
 
+//// garbage collection
+
+void VMString_drop_dead_strings(void);
+
+
 //// hashing
 
 uint32_t Vmstring_hashbytes(const char *s, size_t len);

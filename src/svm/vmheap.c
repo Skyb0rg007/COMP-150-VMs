@@ -284,7 +284,7 @@ static inline void *alloc_small(size_t n) {
   // allocate the object and mark it for memory tracking
   void *object = next;
   next += nbytes;            // <---- this is "the increment"
-  VALGRIND_MEMPOOL_ALLOC(current, object, nbytes);
+  VALGRIND_MEMPOOL_ALLOC(current, object, n);
 
   // track statistics
   count.current.objects++;
