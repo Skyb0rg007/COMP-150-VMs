@@ -1,0 +1,24 @@
+
+.load module 3
+
+# %0 := (lambda (k)
+#         (+ 3.14 (k 0)))
+#
+# %0 := function (k) {
+#   %2 := 0
+#   %3 := k(%2)
+#   %4 := 3.14
+#   %5 := %3 + %4
+#   return %5
+# }
+.load function 0 1 5
+  loadliteral 2 0
+  call 3 1 2
+  loadliteral 4 3.14
+  add 5 3 4
+  return 5
+
+# %1 := (call/cc %0)
+callcc 1 0
+
+print 1

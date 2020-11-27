@@ -1,0 +1,7 @@
+
+.load module 3
+
+loadliteral 1 string 3 65 66 67
+print 1
+print 1
+
