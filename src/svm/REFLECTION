@@ -1,0 +1,63 @@
+
+1. Applications. You understand applications of garbage collection.
+
+    In Lua:
+
+    function iota(n)
+      local t = {}
+      for i = 1, n do t[i] = i end
+      return t
+    end
+
+    Allocating and returning the dynamically-sized table is not without mental
+    overhead in languages like C.
+
+2. Memory management. You can write a C program with no memory errors and no leaks.
+
+    It's clean, but only for non-parsing code. The parser has leaks that I could not fix.
+
+3. Roots. You understand roots.
+
+    vmheap.c: 603 - 610
+
+    I scan registers from 0 up to the current window + the number of registers in use by the current activation
+
+4. Forwarding-pointer invariants. You can show where forwarding-pointer invariants are established for new objects.
+
+    vmrun.c: 370
+    The VMNEW function sets the forwarded pointer to NULL
+
+5. Color invariants. You can explain the roles of color invariants.
+
+    If a gray or black value is placed onto the gray list a second time,
+    nothing that bad will happen. The GC will just spend more time than needed
+    marking values.
+
+6. Cached state. You understand what cached state is flushed at garbage-collection time, and why.
+
+    This is so that the GC can read where the current register window is,
+    and scan the right values. The GC doesn't change the value so it
+    doesn't need to be reloaded.
+
+7. Forwarding, part 1. You understand what information is needed to forward a payload pointer.
+
+    "Instruction *" does not contain references to other GCed objects,
+    and does not contain a member "forwarded"
+
+8. Forwarding, part 2. You understand why we check a forwarding pointer before copying an object.
+
+    Two variables in source code that point to the same string could
+    now point to different strings. So operations that destructively modify
+    one will now no longer modify the other.
+
+9. Heap-growth policy. You understand how the heap-growth policy parameter affects space-time tradeoffs.
+
+    Increasing the policy number would decrease the work done.
+    Decreasing the policy number would decrease the space usage
+    I don't have a good testing suite implemented due to the state of my uft
+
+10. Structure of the heap graph. You can explain how copying collection preserves linked pointer structures.
+
+    When the GC moves string 1, the forwarding pointer on that string is modified.
+    So when the GC looks at string 2, the string is not copied, but instead the pointer becomes the forwarding pointer.
+

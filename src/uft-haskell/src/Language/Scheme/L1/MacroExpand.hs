@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Language.Scheme.L1.MacroExpand
     ( macroExpand
+    , macroExpandAll
     , defaultEnv
     , Denotation (..)
     , M
@@ -46,11 +47,11 @@ testM m = runM m >>= \case
     Left err -> putStrLn $ Text.unpack err
     Right x  -> putStrLn $ Text.unpack (renderText (prettyL0 x))
 
-testEnv :: Env
-testEnv = HashMap.fromList
-    [ ("x", UserMacro 0 [(Pair (Symbol "x") (Symbol "y"), List [Symbol "y", Symbol "y"])] mempty)
-    , ("y", GlobalVar)
-    ]
+macroExpandAll
+    :: [OpenADT L0]
+    -> M [OpenADT L0]
+macroExpandAll es =
+    evalStateT (traverse (StateT . flip macroExpand) es) defaultEnv
 
 expansionError :: Text -> M a
 expansionError = M . lift . throwE
@@ -97,36 +98,37 @@ matchPat
     :: Pat
     -> OpenADT L0
     -> Maybe (HashMap Name (OpenADT L0))
-matchPat = curry (go Just Nothing) where
+matchPat = go Just Nothing where
     -- Matches 0 or more 
     matchMany
         :: Pat
         -> [OpenADT L0]
         -> [OpenADT L0]
-    matchMany pat es = []
-    go :: (HashMap Name (OpenADT L0) -> a)
+    matchMany pat es = error "Multiple matches NYI"
+
+    go :: (HashMap Name (OpenADT L0) -> a) -- on-success
+       -> a                                -- on-error
+       -> Pat -> OpenADT L0                -- input pattern and template
        -> a
-       -> (Pat, OpenADT L0)
-       -> a
-    go s f = \case
+    go s f = curry $ \case
         (PatIdentifier x, e) -> s $ HashMap.singleton x e
         (PatWild, _)         -> s HashMap.empty
         (PatList [], List []) -> s HashMap.empty
         (PatList (p:ps), List (e:es)) ->
-            let s' m = go (s . HashMap.union m) f (PatList ps, List es)
-             in go s' f (p, e)
+            let s' m = go (s . HashMap.union m) f (PatList ps) (List es)
+             in go s' f p e
         (PatDotList p1 p2, Pair e1 e2) ->
             case NonEmpty.uncons p1 of
               (p, Nothing) ->
-                  let s' m = go (s . HashMap.union m) f (p2, e2)
-                   in go s' f (p, e1)
+                  let s' m = go (s . HashMap.union m) f p2 e2
+                   in go s' f p e1
               (p, Just ps) ->
-                  let s' m = go (s . HashMap.union m) f (PatDotList ps p2, e2)
-                   in go s' f (p, e1)
+                  let s' m = go (s . HashMap.union m) f (PatDotList ps p2) e2
+                   in go s' f p e1
         (PatVector [], Vector []) -> s HashMap.empty
         (PatVector (p:ps), Vector (e:es)) ->
-            let s' m = go (s . HashMap.union m) f (PatVector ps, Vector es)
-             in go s' f (p, e)
+            let s' m = go (s . HashMap.union m) f (PatVector ps) (Vector es)
+             in go s' f p e
         -- (PatVector' [] (PatRepeat n p) ps, Vector es)
         (PatSymbol x, Symbol x') | x == x' -> s HashMap.empty
         (PatString x, String x') | x == x' -> s HashMap.empty
@@ -136,74 +138,40 @@ matchPat = curry (go Just Nothing) where
         -- (PatDotList (p1:|p1') p2, Pair e1 e2) ->
             -- let s' m = go (s . HashMap.union m) f (PatDotList p1' p2, e2)
 
-exPat :: Pat
-exPat = PatList [PatDotList (PatIdentifier "x":|[]) (PatIdentifier "y"), PatString "foo"]
-
-exInput :: OpenADT L0
-exInput = List [List [Char 'c', Char 'd', Char 'e'], String "foo"]
-
--- matchPat
-    -- :: Pat
-    -- -> OpenADT L0
-    -- -> (HashMap Name (OpenADT L0) -> a) -- Success
-    -- -> a -- Failure
-    -- -> a
--- matchPat PatWild _ success _ = success HashMap.empty
--- matchPat (PatSym x) e success failure =
-    -- case e of
-      -- Symbol x'
-        -- | x == x' -> success HashMap.empty
-      -- _           -> failure
--- matchPat (PatVar x) e success _ = success (HashMap.singleton x e)
--- matchPat PatEmpty Empty success _ = success HashMap.empty
--- matchPat (PatPair p1 p2) e success failure =
-    -- case e of
-      -- Pair e1 e2 ->
-          -- let success' m = matchPat p2 e2 (success . HashMap.union m) failure
-           -- in matchPat p1 e1 success' failure
-      -- _ -> failure
--- matchPat PatEmpty e success failure =
-    -- case e of
-      -- Empty -> success HashMap.empty
-      -- _     -> failure
--- matchPat PatRepeat{} _ _ failure = failure
-
--- matchPat :: Pat -> OpenADT L0 -> Maybe (HashMap Name (OpenADT L0))
--- matchPat PatWild _ = pure HashMap.empty
--- matchPat (PatSym x) (Symbol x')
-  -- | x == x' = pure HashMap.empty
--- matchPat PatSym{} _ = mzero
--- matchPat (PatVar x) e = pure $ HashMap.singleton x e
--- matchPat (PatList ps) (List es)
-  -- | length ps == length es = fmap mconcat $ traverse (uncurry matchPat) (zip ps es)
-  -- | otherwise = mzero
--- matchPat (PatRepeat p) e = mzero
-
 data Denotation
-    = GlobalVar                                       -- Global variable, not renamed
-    | LocalVar Name                                   -- Local variable, renamed
-    | PrimMacro Int (Env -> OpenADT L0 -> M (OpenADT L0)) -- Primitive macro
-    | UserMacro Int [(OpenADT L0, OpenADT L0)] Env        -- User-defined macro
+    = GlobalVar                                                -- Global variable, not renamed
+    | LocalVar Name                                            -- Local variable, renamed
+    | PrimMacro Int (Env -> OpenADT L0 -> M (OpenADT L0, Env)) -- Primitive macro
+    | UserMacro Int [(OpenADT L0, OpenADT L0)] Env             -- User-defined macro
 
 instance Eq Denotation where
-    GlobalVar == GlobalVar = True
-    LocalVar a == LocalVar b = a == b
-    PrimMacro a _ == PrimMacro b _ = a == b
-    UserMacro a _ _ == UserMacro b _ _ = a == b
-    _ == _ = False
+    (==) = curry $ \case
+        (GlobalVar, GlobalVar) -> True
+        (LocalVar a, LocalVar b) -> a == b
+        (PrimMacro a _, PrimMacro b _) -> a == b
+        (UserMacro a _ _, UserMacro b _ _) -> a == b
+        _ -> False
 
 instance Show Denotation where
-    show GlobalVar = "GlobalVar"
-    show (LocalVar x) = "(LocalVar " ++ show (unName x) ++ ")"
-    show (PrimMacro id _) = "(PrimMacro " ++ show id ++ ")"
+    show GlobalVar          = "GlobalVar"
+    show (LocalVar x)       = "(LocalVar " ++ show (unName x) ++ ")"
+    show (PrimMacro id _)   = "(PrimMacro " ++ show id ++ ")"
     show (UserMacro id _ _) = "(UserMacro " ++ show id ++ ")"
 
 type Env = HashMap Name Denotation
 
+macroExpand'
+    :: Traversable f
+    => Env
+    -> f (OpenADT L0)
+    -> M (f (OpenADT L0), Env)
+macroExpand' env es =
+    runStateT (traverse (StateT . flip macroExpand) es) env
+
 macroExpand
     :: Env
     -> OpenADT L0
-    -> M (OpenADT L0)
+    -> M (OpenADT L0, Env)
 macroExpand env l0 = 
   -- trace ("expanding " ++ show (prettyL0 l0)) $
   case l0 of
@@ -211,21 +179,24 @@ macroExpand env l0 =
         -- trace ("looking up " ++ show (unName x) ++ " in " ++ show (map (first unName) $ HashMap.toList env)) $
         -- trace ("  -> " ++ show (HashMap.lookup x env)) $
         case HashMap.lookup x env of 
-          Just (LocalVar v) -> pure $ Symbol v
-          Just GlobalVar    -> pure $ Symbol $ Name (_name_base x)
-          Nothing           -> pure $ Symbol x
+          Just (LocalVar v) -> pure (Symbol v, env)
+          Just GlobalVar    -> pure (Symbol $ Name (_name_base x), env)
+          Nothing           -> pure (Symbol x, env)
           _                 -> expansionError $ "Invalid syntax: " <> _name_base x
     e@(Pair (Symbol k) _)
       | Just (PrimMacro _ f) <- HashMap.lookup k env -> f env e
       | Just (UserMacro _ clauses env') <- HashMap.lookup k env -> do
           (x, env'') <- transcribe e clauses env env'
           macroExpand env'' x
-    Pair a b -> Pair <$> macroExpand env a <*> macroExpand env b
-    Char c   -> pure $ Char c
-    String s -> pure $ String s
-    Bool b   -> pure $ Bool b
-    Num n    -> pure $ Num n
-    Empty    -> pure Empty
+    Pair a b -> do
+        (a', env') <- macroExpand env a
+        (b', env'') <- macroExpand env' b
+        pure (Pair a' b', env'')
+    Char c   -> pure (Char c, env)
+    String s -> pure (String s, env)
+    Bool b   -> pure (Bool b, env)
+    Num n    -> pure (Num n, env)
+    Empty    -> pure (Empty, env)
     _ -> expansionError "NYI"
 
 transcribe
@@ -286,19 +257,32 @@ freeVars = HashSet.toList . cata alg where
 defaultEnv :: Env
 defaultEnv = HashMap.fromList
     [ ("lambda", PrimMacro 0 lambdaMacro)
+    , ("define", PrimMacro 1 defineMacro)
     ]
     where
         isSym :: OpenADT L0 -> Maybe Name
         isSym (Symbol x) = Just x
         isSym _          = Nothing
-        lambdaMacro :: Env -> OpenADT L0 -> M (OpenADT L0)
+        lambdaMacro :: Env -> OpenADT L0 -> M (OpenADT L0, Env)
         lambdaMacro env (List (Symbol "lambda" : List args : body))
           | Just args' <- traverse isSym args = do
               freshArgs <- traverse gensym args'
               let env' = HashMap.fromList (zip args' (LocalVar <$> freshArgs)) <> env
-              body' <- traverse (macroExpand env') body
-              -- traceM $ "body = " ++ show body
-              -- traceM $ "body' = " ++ show body'
-              pure $ List (Symbol "lambda" : List (map Symbol freshArgs) : body')
+              (body', _) <- macroExpand' env' body
+              pure (List (Symbol "lambda" : List (map Symbol freshArgs) : body'), env)
         lambdaMacro _ _ = expansionError "Invalid lambda syntax"
+        defineMacro :: Env -> OpenADT L0 -> M (OpenADT L0, Env)
+        defineMacro env (List [Symbol "define", Symbol name, e]) = do
+            name' <- gensym name
+            let env' = HashMap.insert name (LocalVar name') env
+            (e', _) <- macroExpand env' e
+            pure (List [Symbol "define", Symbol name', e], env')
+        defineMacro env (List [Symbol "define", List (Symbol name : args), e])
+          | Just args' <- traverse isSym args = do
+              name' <- gensym name
+              freshArgs <- traverse gensym args'
+              let env' = HashMap.fromList ((name, LocalVar name') : zip args' (map LocalVar freshArgs)) <> env
+              (e', _) <- macroExpand env' e
+              pure (List [Symbol "define", List $ Symbol name' : map Symbol freshArgs, e'], env')
+        defineMacro _ _ = expansionError "Invalid define syntax"
 

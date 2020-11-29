@@ -1,4 +1,3 @@
-
 {-# OPTIONS_GHC -Wall #-}
 {-
    Module:      Language.Scheme.L0.Parse
@@ -296,10 +295,10 @@ parseDatum = label "sexpr" $ choice
       -- Left err -> Left $ Text.pack (errorBundlePretty err)
       -- Right s  -> Right s
 
-parseL0 :: FilePath -> Text -> Either Text [OpenADT L0]
+parseL0 :: FilePath -> Text -> Either String [OpenADT L0]
 parseL0 fileName fileContent =
     case parse (intertokenSpace *> many parseDatum <* eof) fileName fileContent of
-      Left err -> Left $ Text.pack (errorBundlePretty err)
+      Left err -> Left (errorBundlePretty err)
       Right s  -> Right s
 
 

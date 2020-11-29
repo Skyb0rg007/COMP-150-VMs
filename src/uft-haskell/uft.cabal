@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2fc34cfc23dd7ba54152fd9cb8b8884c2568412267e129933cf359965a971e8d
+-- hash: 27dd879d71036b4cd24e94522912ee8a432de951cb5dbb698a8f1e9cd60e82fc
 
 name:           uft
 version:        0.1.0.0
@@ -26,15 +26,15 @@ source-repository head
 
 library
   exposed-modules:
-      Data.DList.NonEmpty
       Data.Sum
       Data.Sum.TH
+      Data.VarTable
       Language.Scheme.L0.Ast
-      Language.Scheme.L0.MacroExpand.Expand
-      Language.Scheme.L0.MacroExpand.SyntaxEnv
+      Language.Scheme.L0.MacroExpand
       Language.Scheme.L0.Parse
       Language.Scheme.L1.Ast
       Language.Scheme.L1.MacroExpand
+      Language.Scheme.L1.Parse
       Language.Scheme.Numerics
       Type.Hyper
       Type.List

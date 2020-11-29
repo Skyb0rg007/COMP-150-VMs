@@ -630,7 +630,6 @@ static void scan_vmstate(struct VMState *vm) {
 
 extern void gc(struct VMState *vm) {
     assert(vm);
-    assert(0 && "gc left as exercise");
 
     /* Narrative sketch of the algorithm (see page 266):
 
@@ -696,6 +695,7 @@ extern void gc(struct VMState *vm) {
         fprintf(stderr, "Heap contains %d pages of which %d are live (ratio %.2f)\n",
                 count.available.pages + count.current.pages, count.current.pages,
                 (double)(count.available.pages + count.current.pages) / (double) count.current.pages);
+        /* TODO */
         fprint(stderr, "%d of %d objects holding %, of %, requested bytes survived\n",
                 -1, -1, -1, -1);  // you fill in here
         fprintf(stderr, "Survival rate is %.1f%% of objects and %.1f%% of bytes\n",

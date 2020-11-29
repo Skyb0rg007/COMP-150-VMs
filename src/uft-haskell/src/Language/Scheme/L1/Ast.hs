@@ -4,6 +4,7 @@ module Language.Scheme.L1.Ast
     , module Language.Scheme.L0.Ast
     ) where
 
+import           Control.Lens
 import           Control.DeepSeq        (NFData)
 import           Data.Char              (chr, isAlphaNum, isPrint, ord)
 import           Data.Deriving
@@ -28,20 +29,20 @@ import           Uft.Util
 
 -- L1: Post-macro expansion
 
-type L1 =
-    -- Literals
-    '[ L0.CharF
-     , L0.StringF
-     , L0.SymbolF
-     , L0.BoolF
-     , L0.NumF
-     , L0.ByteVectorF
-     , L0.EmptyF
-     , L0.PairF
-     , L0.VectorF
+type L1Same =
+    '[ CharF
+     , StringF
+     , SymbolF
+     , BoolF
+     , NumF
+     , ByteVectorF
+     , EmptyF
+     , PairF
+     , VectorF
+     ]
 
-    -- Expressions
-     , VarLocalF
+type L1New =
+    '[ VarLocalF
      , VarGlobalF
      , LambdaF
      , LetF
@@ -52,10 +53,11 @@ type L1 =
      , SetLocalF
      , SetGlobalF
      , ApplyF
-
      , DefineF
      , ValF
      ]
+
+type L1 = L1New ++ L1Same
 
 newtype VarLocalF (a :: Type) = VarLocalF' Name
     deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)

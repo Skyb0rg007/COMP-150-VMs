@@ -165,7 +165,7 @@ CASE(Goto):
             int32_t offset = iXYZ(i);
             ip += offset;
 
-            if (offset < 0) {
+            if (offset < 0 && gc_needed) {
                 GC();
             }
             BREAK;
@@ -275,7 +275,8 @@ CASE(Call):
             vm->window += funreg;
             ip = fun->instructions;
 
-            GC();
+            if (gc_needed)
+                GC();
             BREAK;
         }
 CASE(Return):
@@ -300,7 +301,8 @@ CASE(Tailcall):
                     (num_args + 1) * sizeof(Value));
             ip = fun->instructions;
 
-            GC();
+            if (gc_needed)
+                GC();
             BREAK;
         }
 CASE(Error):

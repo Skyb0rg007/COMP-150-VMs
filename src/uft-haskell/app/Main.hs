@@ -4,10 +4,12 @@ module Main
     ) where
 
 import           Control.Monad
+import           Control.Monad.Trans.State
 import           Data.Foldable
 import           Data.Text                             (Text)
 import qualified Data.Text                             as Text
 import qualified Data.Text.IO                          as Text.IO
+import           Data.Text.Prettyprint.Doc
 import           Data.Text.Prettyprint.Doc.Render.Text
 import           Language.Scheme.L0.Ast
 import           Language.Scheme.L0.Parse
@@ -15,6 +17,9 @@ import           Language.Scheme.L1.Ast
 import           Language.Scheme.L1.MacroExpand
 import           System.Environment
 import           System.Exit
+
+putDocLn :: Doc ann -> IO ()
+putDocLn x = putDoc x >> putStrLn ""
 
 usage :: IO a
 usage = do
@@ -32,10 +37,11 @@ main = do
         usage
     fileContent <- Text.IO.readFile fileName
     case parseL0 fileName fileContent of
-      Left err   -> Text.IO.putStrLn err
+      Left err  -> putStrLn err
       Right res -> do
-          forM_ res $ \x -> putDoc (prettyL0 x) >> putStrLn ""
-          res' <- runM $ traverse (macroExpand defaultEnv) res
+          forM_ res (putDocLn . prettyL0)
+          putStrLn "-----------------------------"
+          res' <- runM $ macroExpandAll res
           case res' of
-            Left err -> Text.IO.putStrLn err
-            Right x -> forM_ x $ \x -> putDoc (prettyL0 x) >> putStrLn ""
+            Left err    -> Text.IO.putStrLn err
+            Right res'' -> forM_ res'' (putDocLn . prettyL0)

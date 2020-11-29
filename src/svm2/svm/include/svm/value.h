@@ -58,23 +58,23 @@ extern void svm_value_print(struct svm_value_t *val, FILE *outfile);
  * I'm abstracting this now, since I may change the value representation later
  */
 #define SVM_GETTER_SETTER(lower, upper, type)                                     \
-    SVM_ATTR_NONNULL(1)                                                                \
+    SVM_ATTR_NONNULL(1)                                                           \
     static inline void svm_value_set_##lower(struct svm_value_t *x, type y) {     \
         x->tag = SVM_VALUE_TAG_##upper;                                           \
         x->rep.as_##lower = y;                                                    \
     }                                                                             \
-    SVM_ATTR_NONNULL(1)                                                                \
+    SVM_ATTR_NONNULL(1)                                                           \
     static inline type svm_value_get_##lower(struct svm_value_t *x) {             \
         if (x->tag != SVM_VALUE_TAG_##upper)                                      \
             svm_panic("Expected " #lower ", got %s", svm_value_tag_name(x->tag)); \
         return x->rep.as_##lower;                                                 \
     }
 #define SVM_GETTER_SETTER0(lower, upper)                                          \
-    SVM_ATTR_NONNULL(1)                                                                \
+    SVM_ATTR_NONNULL(1)                                                           \
     static inline void svm_value_set_##lower(struct svm_value_t *x) {             \
         x->tag = SVM_VALUE_TAG_##upper;                                           \
     }                                                                             \
-    SVM_ATTR_NONNULL(1)                                                                \
+    SVM_ATTR_NONNULL(1)                                                           \
     static inline void svm_value_get_##lower(struct svm_value_t *x) {             \
         if (x->tag != SVM_VALUE_TAG_##upper)                                      \
             svm_panic("Expected " #lower ", got %s", svm_value_tag_name(x->tag)); \
@@ -96,9 +96,7 @@ SVM_GETTER_SETTER0(emptylist, EMPTYLIST)
 #undef SVM_GETTER_SETTER
 #undef SVM_GETTER_SETTER0
 
-/** @brief Returns true if the value is truthy, false otherwise
- * @note Evaluates its argument more than once
- */
+/** @brief Returns true if the value is truthy, false otherwise */
 static inline bool svm_value_truthy(struct svm_value_t *x)
 {
     return x->tag != SVM_VALUE_TAG_BOOLEAN || x->rep.as_boolean;
