@@ -54,6 +54,7 @@ prims = HashMap.fromList $ map (\(x, k, n, l) -> (x, Prim k x n l)) m
         , (,,,) "getglobal"    SetsRegister 1 True
         , (,,,) "hash"         SetsRegister 1 False
         , (,,,) "loadliteral"  SetsRegister 1 True
+        , (,,,) "void"         SetsRegister 0 False
         , (,,,) "check_assert" HasEffect    2 True
         , (,,,) "check"        HasEffect    2 True
         , (,,,) "expect"       HasEffect    2 True

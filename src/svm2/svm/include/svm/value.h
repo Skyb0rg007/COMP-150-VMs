@@ -9,21 +9,22 @@
 #include <svm/config.h>
 #include <svm/instruction.h>
 #include <svm/assert.h>
+#include <svm/vector.h>
 
 /** @brief The SVM value tags */
 enum svm_value_tag_t {
-    SVM_VALUE_TAG_VOID,      /* #<void> */
-    SVM_VALUE_TAG_BOOLEAN,   /* #t #f */
-    SVM_VALUE_TAG_CHAR,      /* #\a #\b */
+    SVM_VALUE_TAG_VOID,      /* #<void>         */
+    SVM_VALUE_TAG_BOOLEAN,   /* #t #f           */
+    SVM_VALUE_TAG_CHAR,      /* #\a #\b #\c     */
     SVM_VALUE_TAG_NUMBER,    /* 3.14 #xdeadbeef */
-    SVM_VALUE_TAG_STRING,    /* "foo" "bar" */
-    SVM_VALUE_TAG_SYMBOL,    /* 'foo '|bar| */
-    SVM_VALUE_TAG_EMPTYLIST, /* '() */
-    SVM_VALUE_TAG_CONS,      /* (cons 1 2) */
-    SVM_VALUE_TAG_FUNCTION,
+    SVM_VALUE_TAG_STRING,    /* "foo" "bar"     */
+    SVM_VALUE_TAG_SYMBOL,    /* 'foo '|bar|     */
+    SVM_VALUE_TAG_EMPTYLIST, /* '()             */
+    SVM_VALUE_TAG_CONS,      /* (cons 1 2)      */
+    SVM_VALUE_TAG_BOX,       /* (make-box x)    */
+    SVM_VALUE_TAG_VECTOR,    /* #(1 2 3)        */
+    SVM_VALUE_TAG_FUNCTION,  /* #<procedure>    */
     SVM_VALUE_TAG_CLOSURE,
-    SVM_VALUE_TAG_BLOCK,
-    SVM_VALUE_TAG_TABLE,
     SVM_VALUE_TAG_CONTINUATION
 };
 
@@ -43,11 +44,11 @@ struct svm_value_t {
         double as_number;
         struct svm_string_t *as_string;
         struct svm_string_t *as_symbol;
-        struct svm_block_t *as_cons;
+        struct svm_cons_t *as_cons;
+        struct svm_box_t *as_box;
         struct svm_function_t *as_function;
         struct svm_closure_t *as_closure;
-        struct svm_block_t *as_block;
-        struct svm_table_t *as_table;
+        struct svm_vector_t *as_vector;
         struct svm_activation_t *as_continuation;
     } rep;
 };
@@ -84,11 +85,13 @@ SVM_GETTER_SETTER(char, CHAR, char)
 SVM_GETTER_SETTER(number, NUMBER, double)
 SVM_GETTER_SETTER(string, STRING, struct svm_string_t *)
 SVM_GETTER_SETTER(symbol, SYMBOL, struct svm_string_t *)
-SVM_GETTER_SETTER(cons, CONS, struct svm_block_t *)
+SVM_GETTER_SETTER(cons, CONS, struct svm_cons_t *)
+SVM_GETTER_SETTER(box, BOX, struct svm_box_t *)
 SVM_GETTER_SETTER(function, FUNCTION, struct svm_function_t *)
 SVM_GETTER_SETTER(closure, CLOSURE, struct svm_closure_t *)
-SVM_GETTER_SETTER(block, BLOCK, struct svm_block_t *)
-SVM_GETTER_SETTER(table, TABLE, struct svm_table_t *)
+SVM_GETTER_SETTER(vector, VECTOR, struct svm_vector_t *)
+/* SVM_GETTER_SETTER(block, BLOCK, struct svm_block_t *) */
+/* SVM_GETTER_SETTER(table, TABLE, struct svm_table_t *) */
 SVM_GETTER_SETTER(continuation, CONTINUATION, struct svm_activation_t *)
 SVM_GETTER_SETTER0(void, VOID)
 SVM_GETTER_SETTER0(emptylist, EMPTYLIST)
@@ -108,36 +111,39 @@ static inline bool svm_value_truthy(struct svm_value_t *x)
  *
  ****************************************************************************/
 
-#define SVM_GC_META(t) struct t *forwarded
-
-/** Used for strings and symbols */
 struct svm_string_t {
-    SVM_GC_META(svm_string_t);
+    struct svm_string_t *forwarded;
     size_t length;
     uint32_t hash;
     struct svm_string_t *next_interned;
     char bytes[];
 };
 
-/** Used for cons and block */
-struct svm_block_t {
-    SVM_GC_META(svm_block_t);
-    int nslots;
-    struct svm_value_t slots[];
+struct svm_box_t {
+    struct svm_box_t *forwarded;
+    struct svm_value_t val;
 };
 
-/** Used for functions */
+struct svm_vector_t {
+    struct svm_vector_t *forwarded;
+    svm_vector_t(struct svm_value_t) vec;
+};
+
+struct svm_cons_t {
+    struct svm_cons_t *forwarded;
+    struct svm_value_t car, cdr;
+};
+
 struct svm_function_t {
-    SVM_GC_META(svm_function_t);
+    struct svm_function_t *forwarded;
     int arity;
     int size;
     int nregs;
     svm_instruction_t instructions[];
 };
 
-/** Closures - a combo of function and closed-over values */
 struct svm_closure_t {
-    SVM_GC_META(svm_closure_t);
+    struct svm_closure_t *forwarded;
     struct svm_function_t *fun;
     int nslots;
     struct svm_value_t slots[];
@@ -148,10 +154,10 @@ static inline size_t svm_string_allocsize(size_t len)
 {
     return sizeof(struct svm_string_t) + (len + 1) * sizeof(char);
 }
-static inline size_t svm_block_allocsize(size_t nslots)
-{
-    return sizeof(struct svm_block_t) + nslots * sizeof(struct svm_value_t);
-}
+/* static inline size_t svm_block_allocsize(size_t nslots) */
+/* { */
+    /* return sizeof(struct svm_block_t) + nslots * sizeof(struct svm_value_t); */
+/* } */
 static inline size_t svm_function_allocsize(size_t size)
 {
     return sizeof(struct svm_function_t) + size * sizeof(svm_instruction_t);

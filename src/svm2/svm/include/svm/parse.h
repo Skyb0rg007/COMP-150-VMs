@@ -8,7 +8,6 @@
 
 #include <svm/config.h>
 #include <svm/vm.h>
-#include <svm/instruction.h>
 
 struct svm_function_t *svm_parse_module(struct svm_vm_t *vm, FILE *input);
 

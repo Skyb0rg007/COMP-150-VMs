@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-
-   Module:      Language.Scheme.L0.Parse
+   Module:      Language.Scheme.SExp.Parse
    Description: Parsing SExpressions
    Copyright:   Skye Soss 2020
    License:     MIT
@@ -11,8 +11,8 @@
    Following r7rs (for the most part), parse S-expressions.
 -}
 
-module Language.Scheme.L0.Parse
-    ( parseL0
+module Language.Scheme.SExp.Parse
+    ( parseSExp
     ) where
 
 import           Control.Monad                      (void)
@@ -28,10 +28,10 @@ import qualified Data.Text                          as Text
 import           Data.Void                          (Void)
 import           Data.Word                          (Word8)
 import           GHC.Float                          (int2Double)
-import           Language.Scheme.L0.Ast
+import           Language.Scheme.SExp.Ast
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
-import           Type.OpenADT
+-- import           Type.OpenADT
 -- import           Uft.SExpr.Types
 -- import           Uft.Naming
 -- import           Text.Megaparsec.Debug (dbg)
@@ -254,49 +254,42 @@ parseSymbol = label "identifier" . lexeme . fmap Text.pack $
             <|> try (pure <$> explicitSign)
             <|> (fmap concat $ sequence [pure <$> char '.', pure <$> dotSubsequent, many subsequent])
 
-parseAtom :: P (OpenADT L0)
+parseAtom :: P SExp
 parseAtom = label "atom" $
-        Char <$> parseChar
-    <|> Bool <$> parseBool
-    <|> ByteVector <$> parseByteVector
-    <|> String <$> parseString
-    <|> Symbol . Name <$> try parseSymbol
-    <|> Num <$> parseNumber
+        SChar <$> parseChar
+    <|> SBool <$> parseBool
+    <|> SByteVector <$> parseByteVector
+    <|> SString <$> parseString
+    <|> SSymbol <$> try parseSymbol
+    <|> SNum <$> parseNumber
 
 betweenParens :: P a -> P a
 betweenParens p = (symbol "(" *> p <* symbol ")")
               <|> (symbol "[" *> p <* symbol "]")
 
-parseDatum :: P (OpenADT L0)
+parseDatum :: P SExp
 parseDatum = label "sexpr" $ choice
-    [ char '\''   >> parseDatum <&> \x -> list' Empty [Symbol "quote", x]
-    , char '`'    >> parseDatum <&> \x -> list' Empty [Symbol "quasiquote", x]
-    , string ",@" >> parseDatum <&> \x -> list' Empty [Symbol "unquote-splicing", x]
-    , char ','    >> parseDatum <&> \x -> list' Empty [Symbol "unquote", x]
+    [ char '\''   >> parseDatum <&> \x -> SList [SSymbol "quote", x]
+    , char '`'    >> parseDatum <&> \x -> SList [SSymbol "quasiquote", x]
+    , string ",@" >> parseDatum <&> \x -> SList [SSymbol "unquote-splicing", x]
+    , char ','    >> parseDatum <&> \x -> SList [SSymbol "unquote", x]
     , try parseAtom
     , label "list" (try schemeDotList <|> schemeList)
     , label "vector" schemeVector
     ]
     where
-        list' = foldr Pair
         schemeList = betweenParens $
-            list' Empty <$> many parseDatum
+            SList <$> many parseDatum
         schemeDotList = betweenParens $ do
             xs <- NE.some parseDatum
             void $ symbol "."
             x <- parseDatum
-            pure $ foldr Pair x xs
+            pure $ foldr SPair x xs
         schemeVector = between (symbol "#(") (symbol ")") $
-            Vector <$> many parseDatum
+            SVector <$> many parseDatum
 
--- parseSExpr :: FilePath -> Text -> Either Text (OpenADT L0)
--- parseSExpr fileName fileContent =
-    -- case parse (intertokenSpace *> parseDatum <* eof) fileName fileContent of
-      -- Left err -> Left $ Text.pack (errorBundlePretty err)
-      -- Right s  -> Right s
-
-parseL0 :: FilePath -> Text -> Either String [OpenADT L0]
-parseL0 fileName fileContent =
+parseSExp :: FilePath -> Text -> Either String [SExp]
+parseSExp fileName fileContent =
     case parse (intertokenSpace *> many parseDatum <* eof) fileName fileContent of
       Left err -> Left (errorBundlePretty err)
       Right s  -> Right s

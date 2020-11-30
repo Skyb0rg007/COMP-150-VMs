@@ -8,21 +8,17 @@
 #ifndef SVM_CONFIG_H
 #define SVM_CONFIG_H
 
-#define SVM_VERSION "@SVM_VERSION@"
-
+/* Configuration macros */
+#define SVM_VERSION             "@SVM_VERSION@"
 #define SVM_STRING_MAX_SHORTLEN @SVM_STRING_MAX_SHORTLEN@
 #define SVM_STRING_MIN_STRTAB   @SVM_STRING_MIN_STRTAB@
-#define SVM_ACTIVATION_NUM      @SVM_ACTIVATION_NUM@
 #define SVM_DEBUG_LEVEL         @SVM_DEBUG_LEVEL@
-
 #cmakedefine01 SVM_DEBUG_LINEINFO
 #cmakedefine01 SVM_HAS_STDBOOL_H
 #cmakedefine01 SVM_HAS_INTTYPES_H
-#cmakedefine01 SVM_HAS_STRTOK_R
-#cmakedefine01 SVM_HAS_GETLINE
 #cmakedefine01 SVM_USE_COMPUTED_GOTO
 
-/* C standard headers (TODO: stub) */
+/* C standard headers (TODO: stub non-ansi headers) */
 #include <assert.h>
 #include <complex.h> /* C99 */
 #include <ctype.h>
@@ -45,81 +41,24 @@
 #include <string.h>
 #include <time.h>
 
-/* Functions that can be stubbed */
-/** @def svm_strtok
- * @brief The `strtok_r` function. Stubbed if needed.
- */
-#if SVM_HAS_STRTOK_R
-#  define svm_strtok(str, delim, saveptr) strtok_r(str, delim, saveptr)
-#else
-#  error "strtok_r is not yet stubbed"
-#endif
-
-/** @def svm_getline
- * @brief The `getline` function. Stubbed if needed.
- */
-#if SVM_HAS_GETLINE
-#  define svm_getline(lineptr, n, stream) getline(lineptr, n, stream)
-#else
-#  error "getline is not yet stubbed"
-#endif
-
-/* Attributes (TODO: feature test) */
-/** @brief The noreturn attribute
- * Indicates that the function does not return normally (ex. abort(), longjmp())
- */
-#define SVM_ATTR_NORETURN __attribute__((__noreturn__))
-/** @brief The returns_nonnull attribute
- * Indicates that the function's pointer return value is never NULL
- */
-#define SVM_ATTR_RETURNS_NONNULL __attribute__((__returns_nonnull__))
-/** @brief The warn_unused_result attribute
- * Indicates that the function's return value must be used
- */
+/* Function attributes */
+/* TODO: feature test */
+#define SVM_ATTR_ALLOC_SIZE(idx)    __attribute__((__alloc_size__(idx)))
+#define SVM_ATTR_ALWAYS_INLINE      __attribute__((__always_inline__))
+#define SVM_ATTR_CONST              __attribute__((__const__))
+#define SVM_ATTR_MALLOC             __attribute__((__malloc__))
+#define SVM_ATTR_NONNULL(...)       __attribute__((__nonnull__(__VA_ARGS__)))
+#define SVM_ATTR_NORETURN           __attribute__((__noreturn__))
+#define SVM_ATTR_PRINTF(idx, fst)   __attribute__((__format__(__printf__, idx, fst)))
+#define SVM_ATTR_PURE               __attribute__((__pure__))
+#define SVM_ATTR_RETURNS_NONNULL    __attribute__((__returns_nonnull__))
 #define SVM_ATTR_WARN_UNUSED_RESULT __attribute__((__warn_unused_result__))
-/** @brief The format(printf) attribute
- * @param idx The index of the printf format string
- * @param fst The index past the last non-variable argument
- */
-#define SVM_ATTR_PRINTF(idx, fst) __attribute__((__format__(__printf__, idx, fst)))
-/** @brief The nonnull attribute
- * Indicates the pointer arguments at the given indices must not be NULL
- */
-#define SVM_ATTR_NONNULL(...) __attribute__((__nonnull__(__VA_ARGS__)))
-/** @brief The alloc_size attribute
- * Indicates that the returned pointer points to memory of size given by the
- * function argument at position @p idx
- */
-#define SVM_ATTR_ALLOC_SIZE(idx) __attribute__((__alloc_size__(idx)))
-/** @brief The always_inline attribute */
-#define SVM_ATTR_ALWAYS_INLINE __attribute__((__always_inline__))
-/** @brief The const attribute
- * Indicates that the return value depends only on parameters
- */
-#define SVM_ATTR_CONST __attribute__((__const__))
-/** @brief The pure attribute
- * Indicates that the return value depends only on parameters + global variables
- */
-#define SVM_ATTR_PURE __attribute__((__pure__))
-/** @brief The malloc attribute
- * Indicates that non-null return values don't alias with other valid
- * pointers on function return, and the memory it points to has undefined content
- */
-#define SVM_ATTR_MALLOC __attribute__((__malloc__))
 
-/** Returns the number of elements in the given array
- * @note This must be given an array, not a pointer
- */
-#define SVM_ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
-/** Mark a variable as possibly unused */
-#define SVM_UNUSED(arg)     ((void)arg)
-/** Numeric maximum
- * @note This evaluates its arguments multiple times
- */
-#define SVM_MAX(a, b) ((a) < (b) ? (b) : (a))
-/** Numeric minimum
- * @note This evaluates its arguments multiple times
- */
-#define SVM_MIN(a, b) ((a) < (b) ? (a) : (b))
+/* Utility macros */
+#define SVM_ARRAY_SIZE(arr)  (sizeof(arr) / sizeof(arr[0]))
+#define SVM_UNUSED(arg)      ((void)arg)
+#define SVM_MAX(a, b)        ((a) < (b) ? (b) : (a))
+#define SVM_MIN(a, b)        ((a) < (b) ? (a) : (b))
+#define SVM_BETWEEN(a, b, c) ((b) < (a) && (a) < (c))
 
 #endif /* ifndef SVM_CONFIG_H */

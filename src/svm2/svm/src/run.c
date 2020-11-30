@@ -12,7 +12,7 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
     /* Push the current activation */
     {
         struct svm_activation_t *current =
-            svm_gc_alloc(vm, svm_activation_allocsize(fun->nregs));
+            svm_heap_alloc(vm, svm_activation_allocsize(fun->nregs));
         current->forwarded = NULL;
         current->parent = vm->current;
         current->fun = fun;
@@ -125,7 +125,7 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
                         svm_assert_release(lastargreg - funreg == fun->arity);
 
                         struct svm_activation_t *act =
-                            svm_gc_alloc(vm, svm_activation_allocsize(fun->nregs));
+                            svm_heap_alloc(vm, svm_activation_allocsize(fun->nregs));
                         act->forwarded = NULL;
                         act->parent = vm->current;
                         act->fun = fun;
@@ -156,11 +156,23 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
                 }
                 break;
             }
+            case SVM_OPCODE_TAILCALL: {
+                svm_panic("tailcall nyi");
+            }
+            case SVM_OPCODE_HASH: {
+                svm_panic("hash nyi");
+            }
+            case SVM_OPCODE_CHECK: {
+                svm_panic("check-expect nyi");
+            }
+            case SVM_OPCODE_EXPECT: {
+                svm_panic("check-expect nyi");
+            }
             case SVM_OPCODE_RETURN: {
                 int argreg = regx;
 
                 struct svm_activation_t *parent = vm->current->parent;
-                svm_assert_release(parent);
+                svm_assert_release(parent != NULL);
                 parent->regs[vm->current->destreg] = vm->current->regs[argreg];
 
                 vm->current = parent; /* "pop" */
@@ -180,7 +192,9 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
                     vm->current->instr++;
                 break;
             }
-            case SVM_OPCODE_SETGLOBAL:
+            case SVM_OPCODE_SETGLOBAL: {
+                svm_panic("globals nyi");
+            }
             case SVM_OPCODE_GETGLOBAL: {
                 svm_panic("globals nyi");
             }
@@ -189,12 +203,10 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
                 int carreg = regy;
                 int cdrreg = regz;
 
-                struct svm_block_t *pair =
-                    svm_gc_alloc(vm, sizeof *pair + 2 * sizeof(struct svm_value_t));
+                struct svm_cons_t *pair = svm_heap_alloc(vm, sizeof *pair);
                 pair->forwarded = NULL;
-                pair->nslots = 2;
-                pair->slots[0] = vm->current->regs[carreg];
-                pair->slots[1] = vm->current->regs[cdrreg];
+                pair->car = vm->current->regs[carreg];
+                pair->cdr = vm->current->regs[cdrreg];
                 svm_value_set_cons(&vm->current->regs[destreg], pair);
                 break;
             }
@@ -202,14 +214,14 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
                 int destreg = regx;
                 int pairreg = regy;
                 vm->current->regs[destreg] =
-                    svm_value_get_cons(&vm->current->regs[pairreg])->slots[0];
+                    svm_value_get_cons(&vm->current->regs[pairreg])->car;
                 break;
             }
             case SVM_OPCODE_CDR: {
                 int destreg = regx;
                 int pairreg = regy;
                 vm->current->regs[destreg] =
-                    svm_value_get_cons(&vm->current->regs[pairreg])->slots[1];
+                    svm_value_get_cons(&vm->current->regs[pairreg])->cdr;
                 break;
             }
             case SVM_OPCODE_CALLCC: {
@@ -221,7 +233,7 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
                 svm_assert_release(fun->arity == 1);
 
                 struct svm_activation_t *act =
-                    svm_gc_alloc(vm, svm_activation_allocsize(fun->nregs));
+                    svm_heap_alloc(vm, svm_activation_allocsize(fun->nregs));
                 act->forwarded = NULL;
                 act->parent = vm->current;
                 act->fun = fun;
@@ -236,7 +248,105 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
                 vm->current = act;
                 break;
             }
-            default:
+            case SVM_OPCODE_GC: {
+                svm_log("GC nyi");
+                break;
+            }
+            case SVM_OPCODE_BOOLEANQ: {
+                int destreg = regx;
+                int srcreg = regy;
+                svm_value_set_boolean(&vm->current->regs[destreg],
+                        (vm->current->regs[srcreg]).tag == SVM_VALUE_TAG_BOOLEAN);
+                break;
+            }
+            case SVM_OPCODE_NUMBERQ: {
+                int destreg = regx;
+                int srcreg = regy;
+                svm_value_set_boolean(&vm->current->regs[destreg],
+                        (vm->current->regs[srcreg]).tag == SVM_VALUE_TAG_NUMBER);
+                break;
+            }
+            case SVM_OPCODE_SYMBOLQ: {
+                int destreg = regx;
+                int srcreg = regy;
+                svm_value_set_boolean(&vm->current->regs[destreg],
+                        (vm->current->regs[srcreg]).tag == SVM_VALUE_TAG_SYMBOL);
+                break;
+            }
+            case SVM_OPCODE_NULLQ: {
+                svm_panic("null? should be removed");
+            }
+            case SVM_OPCODE_GT: {
+                int destreg = regx;
+                int arg1 = regy;
+                int arg2 = regz;
+                svm_value_set_boolean(&vm->current->regs[destreg],
+                        svm_value_get_number(&vm->current->regs[arg1])
+                        >
+                        svm_value_get_number(&vm->current->regs[arg2]));
+                break;
+            }
+            case SVM_OPCODE_LT: {
+                int destreg = regx;
+                int arg1 = regy;
+                int arg2 = regz;
+                svm_value_set_boolean(&vm->current->regs[destreg],
+                        svm_value_get_number(&vm->current->regs[arg1])
+                        <
+                        svm_value_get_number(&vm->current->regs[arg2]));
+                break;
+            }
+            case SVM_OPCODE_EQ: {
+                int destreg = regx;
+                int arg1 = regy;
+                int arg2 = regz;
+                svm_value_set_boolean(&vm->current->regs[destreg],
+                        svm_value_get_number(&vm->current->regs[arg1])
+                        ==
+                        svm_value_get_number(&vm->current->regs[arg2]));
+                break;
+            }
+            case SVM_OPCODE_MKCLOSURE: {
+                svm_panic("Closures nyi");
+            }
+            case SVM_OPCODE_SETCLSLOT: {
+                svm_panic("Closures nyi");
+            }
+            case SVM_OPCODE_GETCLSLOT: {
+                svm_panic("Closures nyi");
+            }
+            case SVM_OPCODE_ERROR: {
+                int srcreg = regx;
+                svm_panic("%s",
+                        svm_value_get_string(&vm->current->regs[srcreg])->bytes);
+            }
+            case SVM_OPCODE_MKBOX: {
+                int destreg = regx;
+                int srcreg = regy;
+                svm_log("mkbox %d %d", destreg, srcreg);
+                struct svm_box_t *box = svm_heap_alloc(vm, sizeof *box);
+                box->forwarded = NULL;
+                box->val = vm->current->regs[srcreg];
+                svm_value_set_box(&vm->current->regs[destreg], box);
+                break;
+            }
+            case SVM_OPCODE_BOXSET: {
+                int boxreg = regx;
+                int valreg = regy;
+
+                svm_value_get_box(&vm->current->regs[boxreg])->val =
+                    vm->current->regs[valreg];
+                break;
+            }
+            case SVM_OPCODE_BOXREF: {
+                int destreg = regx;
+                int boxreg = regy;
+
+                vm->current->regs[destreg] =
+                    svm_value_get_box(&vm->current->regs[boxreg])->val;
+                break;
+            }
+            case SVM_OPCODE_UNDEFINED:
                 svm_panic("Opcode %d nyi", svm_instruction_opcode(i));
         }
     }

@@ -36,7 +36,7 @@ struct svm_function_t *svm_parse_module(struct svm_vm_t *vm, FILE *input)
     int n;
     unsigned count;
     if (sscanf(line, ".load module %u %n", &count, &n) == 1 && line[n] == '\0') {
-        svm_free(vm, line, allocated);
+        svm_free(&vm->allocator, line, allocated);
         return parse_function(vm, 0, count, input);
     } else {
         svm_panic("Expected module, got \"%s\"", line);
@@ -227,7 +227,7 @@ static uint32_t scan_literal(struct svm_vm_t *vm, char *literal)
         svm_value_set_void(&val);
     } else if (sscanf(line, " string %u %n", &len, &n) == 1) {
         line += n;
-        char *tmp = svm_alloc(vm, len + 1);
+        char *tmp = svm_alloc(&vm->allocator, len + 1);
         for (unsigned i = 0; i < len; i++) {
             int c = 0;
             sscanf(line, "%d %n", &c, &n);
@@ -238,7 +238,7 @@ static uint32_t scan_literal(struct svm_vm_t *vm, char *literal)
         if (line[0] != '\0')
             svm_panic("Invalid string literal: \"%s\"", literal);
         svm_value_set_string(&val, svm_string_new(vm, tmp, len));
-        svm_free(vm, tmp, len + 1);
+        svm_free(&vm->allocator, tmp, len + 1);
     } else if (sscanf(line, " %lf %n", &f, &n) && !line[n]) {
         svm_value_set_number(&val, f);
     } else {
@@ -262,7 +262,7 @@ static ssize_t read_line(struct svm_vm_t *vm, char **lineptr, size_t *n, FILE *i
 
     if (*lineptr == NULL) {
         *n = 120;
-        *lineptr = svm_alloc(vm, *n);
+        *lineptr = svm_alloc(&vm->allocator, *n);
         svm_assert_release(*lineptr);
     }
 
@@ -310,7 +310,7 @@ static ssize_t read_line(struct svm_vm_t *vm, char **lineptr, size_t *n, FILE *i
                 goto unlock_return;
             }
 
-            *lineptr = svm_realloc(vm, *lineptr, *n, needed);
+            *lineptr = svm_realloc(&vm->allocator, *lineptr, *n, needed);
             svm_assert_release(*lineptr);
             *n = needed;
         }
@@ -331,7 +331,7 @@ static struct svm_function_t *parse_function(struct svm_vm_t *vm, int arity, int
     ssize_t len;
     size_t allocated = 0;
 
-    struct svm_function_t *fun = svm_gc_alloc(vm, svm_function_allocsize(count + 1));
+    struct svm_function_t *fun = svm_heap_alloc(vm, svm_function_allocsize(count + 1));
     fun->forwarded = NULL;
     fun->arity = arity;
     fun->size = count + 1;
@@ -356,7 +356,7 @@ static struct svm_function_t *parse_function(struct svm_vm_t *vm, int arity, int
         }
     }
     if (line)
-        svm_free(vm, line, allocated);
+        svm_free(&vm->allocator, line, allocated);
     fun->instructions[count] = svm_instruction_r0(SVM_OPCODE_HALT);
     return fun;
 }

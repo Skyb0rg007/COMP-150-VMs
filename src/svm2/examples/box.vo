@@ -1,0 +1,14 @@
+
+.load module 8
+
+loadliteral 0 3
+mkbox 1 0
+
+boxref 2 1
+print 2
+
+loadliteral 0 5
+boxset 1 0
+
+boxref 2 1
+print 2

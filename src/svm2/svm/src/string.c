@@ -95,7 +95,7 @@ static void resize(struct svm_vm_t *vm, int newsize)
 
 static struct svm_string_t *allocstring(struct svm_vm_t *vm, size_t len, size_t hash)
 {
-    struct svm_string_t *s = svm_gc_alloc(vm, svm_string_allocsize(len + 1));
+    struct svm_string_t *s = svm_heap_alloc(vm, svm_string_allocsize(len + 1));
     s->forwarded = NULL;
     s->length = len;
     s->hash = hash;

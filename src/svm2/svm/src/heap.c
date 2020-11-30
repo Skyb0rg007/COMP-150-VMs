@@ -6,20 +6,6 @@
 #define NPAYLOAD        (PAGESIZE - sizeof(struct svm_page_t *) - sizeof(union align))
 #define SMALL_OBJ_LIMIT NPAYLOAD
 
-void *svm_default_allocator(void *p, size_t oldsz, size_t newsz, void *ud)
-{
-    (void)oldsz;
-    (void)ud;
-    if (newsz == 0) {
-        free(p);
-        return NULL;
-    } else {
-        void *new = realloc(p, newsz);
-        svm_assert(new);
-        return new;
-    }
-}
-
 /* Object with max alignment */
 union align {
     int i;
@@ -62,9 +48,7 @@ void svm_heap_init(struct svm_vm_t *vm)
     memset(&heap->count, 0x0, sizeof heap->count);
     heap->gc_in_progress = false;
     heap->gc_needed = false;
-    heap->gray.size = 0;
-    heap->gray.capacity = 0;
-    heap->gray.elems = NULL;
+    svm_vector_init(&heap->gray);
     memset(&heap->total, 0x0, sizeof heap->total);
 
     take_available_page(vm);
@@ -98,7 +82,7 @@ static size_t roundup(size_t n)
     return ((n + block + 1) / block) * block;
 }
 
-void *svm_gc_alloc(struct svm_vm_t *vm, size_t size)
+void *svm_heap_alloc(struct svm_vm_t *vm, size_t size)
 {
     struct svm_heap_t *heap = &vm->heap;
     svm_assert(size > 0);
@@ -136,37 +120,27 @@ static void graystack_init(struct svm_vm_t *vm)
 {
     struct svm_heap_t *heap = &vm->heap;
     size_t initial_cap = 40;
-    heap->gray.size = 0;
-    heap->gray.capacity = initial_cap;
-    heap->gray.elems = svm_alloc(vm, initial_cap * sizeof *heap->gray.elems);
+    svm_vector_init(&heap->gray);
+    svm_vector_reserve(&heap->gray, initial_cap, &vm->allocator);
 }
 static void graystack_free(struct svm_vm_t *vm)
 {
     struct svm_heap_t *heap = &vm->heap;
-    svm_free(vm, heap->gray.elems, heap->gray.size * sizeof *heap->gray.elems);
-    heap->gray.size = 0;
-    heap->gray.capacity = 0;
-    heap->gray.elems = NULL;
+    svm_vector_free(&heap->gray, &vm->allocator);
 }
 static void graystack_push(struct svm_vm_t *vm, struct svm_value_t *v)
 {
     struct svm_heap_t *heap = &vm->heap;
-    if (heap->gray.size == heap->gray.capacity) {
-        size_t oldcap = heap->gray.capacity;
-        size_t newcap = oldcap ? oldcap * 2 : 40;
-        size_t oldalloc = oldcap * sizeof *heap->gray.elems;
-        size_t newalloc = newcap * sizeof *heap->gray.elems;
-        heap->gray.elems = svm_realloc(vm, heap->gray.elems, oldalloc, newalloc);
-    }
-    heap->gray.elems[heap->gray.size++] = v;
+    svm_vector_push_back(&heap->gray, v, &vm->allocator);
 }
 static struct svm_value_t *graystack_pop(struct svm_vm_t *vm)
 {
     struct svm_heap_t *heap = &vm->heap;
-    if (heap->gray.size == 0) {
+    if (svm_vector_empty(&heap->gray))
         return NULL;
-    }
-    return heap->gray.elems[--heap->gray.size];
+    struct svm_value_t *x = svm_vector_back(&heap->gray);
+    svm_vector_pop_back(&heap->gray);
+    return x;
 }
 
 /*****************************************************************************
@@ -177,7 +151,7 @@ static struct svm_value_t *graystack_pop(struct svm_vm_t *vm)
 
 static void acquire_available_page(struct svm_vm_t *vm)
 {
-    struct svm_page_t *page = svm_alloc(vm, PAGESIZE);
+    struct svm_page_t *page = svm_alloc(&vm->allocator, PAGESIZE);
     page->link = vm->heap.available;
     vm->heap.available = page;
     vm->heap.count.available.pages++;
@@ -230,7 +204,7 @@ static int free_pages(struct svm_vm_t *vm, struct svm_page_t *pages)
     {
         count++;
         struct svm_page_t *next = pages->link;
-        svm_free(vm, pages, PAGESIZE);
+        svm_free(&vm->allocator, pages, PAGESIZE);
         pages = next;
     }
     return count;

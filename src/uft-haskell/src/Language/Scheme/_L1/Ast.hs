@@ -115,6 +115,3 @@ derive [deriveOpenADT, deriveShow1, deriveEq1, deriveOrd1, deriveRead1]
     , ''ValF
     ]
 
--- instance PrettyF SymbolF where
-    -- prettyF' (SymbolF' n) = prettyF' (L0.SymbolF' (Text.pack (show n)))
-

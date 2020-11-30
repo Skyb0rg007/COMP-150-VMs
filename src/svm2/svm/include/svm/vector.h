@@ -28,8 +28,7 @@
 
 #include <svm/config.h>
 #include <svm/assert.h>
-#include <svm/heap.h>
-#include <svm/vm.h>
+#include <svm/alloc.h>
 
 /** @brief The polymorphic vector type
  * @param T The type the vector holds
@@ -38,7 +37,7 @@
  * @hideinitializer
  */
 #define svm_vector_t(T) \
-    struct { T *__begin_, *__end_, *__end_cap_; }
+    struct { T *__begin_; T *__end_; T *__end_cap_; }
 
 /*****************************************************************************
  *
@@ -116,7 +115,7 @@
  * @hideinitializer
  */
 #define svm_vector_at(v, n) \
-    (*(svm_assert((n) >= svm_vector_size(v)), (v)->__begin_ + (n)))
+    (*(svm_assert((n) < svm_vector_size(v)), (v)->__begin_ + (n)))
 
 /** @brief Access the first vector element
  * @param v svm_vector_t(T) *
@@ -149,6 +148,16 @@
 #define svm_vector_pop_back(v) \
     (svm_assert(!svm_vector_empty(v)), (v)->__end_--, (void)0)
 
+/** @brief Forwards iteration
+ */
+#define svm_vector_foreach(it, v) \
+    for ((it) = svm_vector_begin(v); (it) != svm_vector_end(v); (it)++)
+
+/** @brief Backwards iteration
+ */
+#define svm_vector_foreach_reverse(it, v) \
+    for ((it) = svm_vector_rbegin(v); (it) != svm_vector_rend(v); (it)++)
+
 /*****************************************************************************
  *
  * Allocating routines
@@ -161,7 +170,7 @@
  * @hideinitializer
  */
 #define svm_vector_free(v, a) \
-    ((void)((a)->fun((v)->__begin_, (char *)(v)->__begin_ - (char *)(v)->__end_cap_, 0, (a)->ud)))
+    svm_free(a, (v)->__begin_, (char *)(v)->__end_cap_ - (char *)(v)->__begin_)
 
 /** @brief Ensure that the vector's capacity is at least @p n
  * @param v svm_vector_t(T) *
@@ -241,7 +250,7 @@ static inline void svm_vector__setcap(void *_begin, void *_end, void *_end_cap, 
 
     size_t end_offset = *end - *begin;
     size_t end_cap_offset = *end_cap - *begin;
-    *begin = a->fun(*begin, end_cap_offset, elem_size * n, a->ud);
+    *begin = svm_realloc(a, *begin, end_cap_offset, elem_size * n);
     svm_assert_paranoid(*begin != NULL);
     *end = *begin + end_offset;
     *end_cap = *begin + elem_size * n;

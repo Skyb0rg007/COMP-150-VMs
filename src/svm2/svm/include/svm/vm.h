@@ -4,7 +4,8 @@
 #include <svm/config.h>
 #include <svm/assert.h>
 #include <svm/value.h>
-/* #include <svm/heap.h> */
+#include <svm/alloc.h>
+#include <svm/vector.h>
 
 /* Holds info about string interning 
  * Used by the string module
@@ -55,10 +56,7 @@ struct svm_heap_t {
     /* Gray objects, stored as a stack
      * Stored in the gc state to reuse the allocated memory
      */
-    struct {
-        size_t size, capacity;
-        struct svm_value_t **elems;
-    } gray;
+    svm_vector_t(struct svm_value_t *) gray;
     /* Stats */
     struct {
         int allocations,
@@ -72,7 +70,7 @@ struct svm_heap_t {
  * These are garbage collected and organized in a Spaghetti stack
  */
 struct svm_activation_t {
-    SVM_GC_META(svm_activation_t);
+    struct svm_activation_t *forwarded;
     struct svm_activation_t *parent;
     struct svm_function_t *fun;
     int instr;   /* Instruction counter */
@@ -95,16 +93,10 @@ struct svm_vm_t {
     struct svm_activation_t *current;
 
     /* Used by memory allocation functions */
-    struct svm_allocator_t {
-        void *(*fun)(void *p, size_t oldsize, size_t newsize, void *ud);
-        void *ud;
-    } allocator;
+    struct svm_allocator_t allocator;
 
     /* Holds literals + functions. Not GCed. */
-    struct {
-        size_t size, capacity;
-        struct svm_value_t *elems;
-    } literals;
+    svm_vector_t(struct svm_value_t) literals;
 
     /* Used by string module to allocate strings. */
     struct svm_stringtable_t stringtable;
@@ -119,29 +111,19 @@ extern void svm_vm_gc(struct svm_vm_t *vm) SVM_ATTR_NONNULL(1);
 SVM_ATTR_NONNULL(1)
 static inline struct svm_value_t svm_vm_loadliteral(struct svm_vm_t *vm, size_t idx)
 {
-    if (idx > vm->literals.size) {
-        svm_panic("Literal index %zu out of bounds (should be less than %zu)",
-                idx, vm->literals.size);
+    /* svm_log("Get literal: %zu", idx); */
+    if (idx > svm_vector_size(&vm->literals)) {
+        svm_panic("Literal index %zu out of bounds (should be < %zu)", idx, svm_vector_size(&vm->literals));
     }
-    return vm->literals.elems[idx];
+    return svm_vector_at(&vm->literals, idx);
 }
 
 SVM_ATTR_NONNULL(1)
 static inline int svm_vm_pushliteral(struct svm_vm_t *vm, struct svm_value_t value)
 {
-    if (vm->literals.size == vm->literals.capacity) {
-        size_t oldcap = vm->literals.capacity;
-        size_t newcap = oldcap ? oldcap * 2 : 128;
-        /* void *p = svm_realloc(vm, vm->literals.elems, sizeof vm->literals.elems[0] * oldcap, sizeof vm->literals.elems[0] * newcap); */
-        void *p = realloc(vm->literals.elems, sizeof vm->literals.elems[0] * newcap);
-        if (p == NULL)
-            svm_panic("Attempt to realloc literal pool (%zu -> %zu) failed",
-                    oldcap, newcap);
-        vm->literals.elems = p;
-        vm->literals.capacity = newcap;
-    }
-    vm->literals.elems[vm->literals.size] = value;
-    return vm->literals.size++;
+    svm_vector_push_back(&vm->literals, value, &vm->allocator);
+    /* svm_log("Pushed literal: %zu", svm_vector_size(&vm->literals) - 1); */
+    return svm_vector_size(&vm->literals) - 1;
 }
 
 #endif /* ifndef SVM_VM_H */

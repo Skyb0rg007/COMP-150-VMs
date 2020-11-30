@@ -5,7 +5,6 @@ project(SVM
     DESCRIPTION "A simple virtual machine"
     HOMEPAGE_URL https://github.com/Skyb0rg007/COMP-150-VMs
     LANGUAGES C)
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers/cmake)
 
 ## Settings
 set(CMAKE_C_FLAGS_DEBUG "-g -fno-omit-frame-pointer -fsanitize=address")

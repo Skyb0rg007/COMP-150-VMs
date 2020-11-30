@@ -48,7 +48,10 @@
     _(numberq,     Numberq,     NUMBERQ,     R2,    "rX := number? rY")        \
     _(booleanq,    Booleanq,    BOOLEANQ,    R2,    "rX := boolean? rY")       \
     _(gc,          Gc,          GC,          R0,    "gc")                      \
-    _(callcc,      CallCC,      CALLCC,      R2,    "rX := callcc rY")
+    _(callcc,      CallCC,      CALLCC,      R2,    "rX := callcc rY")         \
+    _(mkbox,       MkBox,       MKBOX,       R2,    "rX := make-box rY")       \
+    _(boxset,      BoxSet,      BOXSET,      R2,    "box-set! rX rY")          \
+    _(boxref,      BoxRef,      BOXREF,      R2,    "rX := box-ref rY")
 
 /** @brief Enumeration of all opcodes */
 enum svm_opcode_t {

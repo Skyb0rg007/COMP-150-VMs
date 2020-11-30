@@ -4,21 +4,21 @@
 
 const char *svm_value_tag_name(enum svm_value_tag_t tag) {
     static const char *mapping[] = {
-        [SVM_VALUE_TAG_VOID]      = "void",
-        [SVM_VALUE_TAG_BOOLEAN]   = "boolean",
-        [SVM_VALUE_TAG_CHAR]      = "char",
-        [SVM_VALUE_TAG_NUMBER]    = "number",
-        [SVM_VALUE_TAG_STRING]    = "string",
-        [SVM_VALUE_TAG_SYMBOL]    = "symbol",
-        [SVM_VALUE_TAG_EMPTYLIST] = "emptylist",
-        [SVM_VALUE_TAG_CONS]      = "cons",
-        [SVM_VALUE_TAG_FUNCTION]  = "function",
-        [SVM_VALUE_TAG_CLOSURE]   = "closure",
-        [SVM_VALUE_TAG_BLOCK]     = "block",
-        [SVM_VALUE_TAG_TABLE]     = "table",
-        [SVM_VALUE_TAG_CONTINUATION] = "continuation",
+        [SVM_VALUE_TAG_VOID]         = "void",
+        [SVM_VALUE_TAG_BOOLEAN]      = "boolean",
+        [SVM_VALUE_TAG_CHAR]         = "char",
+        [SVM_VALUE_TAG_NUMBER]       = "number",
+        [SVM_VALUE_TAG_STRING]       = "string",
+        [SVM_VALUE_TAG_SYMBOL]       = "symbol",
+        [SVM_VALUE_TAG_EMPTYLIST]    = "emptylist",
+        [SVM_VALUE_TAG_CONS]         = "cons",
+        [SVM_VALUE_TAG_BOX]          = "box",
+        [SVM_VALUE_TAG_VECTOR]       = "vector",
+        [SVM_VALUE_TAG_FUNCTION]     = "function",
+        [SVM_VALUE_TAG_CLOSURE]      = "closure",
+        [SVM_VALUE_TAG_CONTINUATION] = "continuation"
     };
-    if (tag < 0 || tag > (int)SVM_ARRAY_SIZE(mapping)) {
+    if (SVM_BETWEEN(tag, 0, SVM_ARRAY_SIZE(mapping))) {
         return "unknown svm tag";
     } else {
         return mapping[tag];
@@ -74,23 +74,35 @@ void svm_value_print(struct svm_value_t *val, FILE *outfile)
             return;
         case SVM_VALUE_TAG_CONS:
             fprintf(outfile, "(");
-            svm_value_print(&val->rep.as_block->slots[0], outfile);
+            svm_value_print(&val->rep.as_cons->car, outfile);
             fprintf(outfile, ".");
-            svm_value_print(&val->rep.as_block->slots[1], outfile);
+            svm_value_print(&val->rep.as_cons->cdr, outfile);
+            fprintf(outfile, ")");
+            return;
+        case SVM_VALUE_TAG_BOX:
+            fprintf(outfile, "(make-box ");
+            svm_value_print(&val->rep.as_box->val, outfile);
+            fprintf(outfile, ")");
+            return;
+        case SVM_VALUE_TAG_VECTOR:
+            fprintf(outfile, "#(");
+            struct svm_value_t *it;
+            svm_vector_foreach(it, &val->rep.as_vector->vec)
+                svm_value_print(it, outfile);
             fprintf(outfile, ")");
             return;
         case SVM_VALUE_TAG_FUNCTION:
-            fprintf(outfile, "#<function %p>", (void *)&val->rep.as_function);
+            fprintf(outfile, "#<procedure %p>", (void *)&val->rep.as_function);
             return;
         case SVM_VALUE_TAG_CLOSURE:
             fprintf(outfile, "#<closure %p>", (void *)&val->rep.as_closure);
             return;
-        case SVM_VALUE_TAG_BLOCK:
-            fprintf(outfile, "#<block %p>", (void *)&val->rep.as_block);
-            return;
-        case SVM_VALUE_TAG_TABLE:
-            fprintf(outfile, "#<table %p>", (void *)&val->rep.as_table);
-            return;
+        /* case SVM_VALUE_TAG_BLOCK: */
+            /* fprintf(outfile, "#<block %p>", (void *)&val->rep.as_block); */
+            /* return; */
+        /* case SVM_VALUE_TAG_TABLE: */
+            /* fprintf(outfile, "#<table %p>", (void *)&val->rep.as_table); */
+            /* return; */
         case SVM_VALUE_TAG_CONTINUATION:
             fprintf(outfile, "#<continuation %p>", (void *)&val->rep.as_continuation);
             return;

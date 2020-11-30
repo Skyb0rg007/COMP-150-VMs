@@ -1,208 +1,249 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-
-   Module:      Language.Scheme.L0.Ast
-   Description: The initial parsed language
-   Copyright:   Skye Soss 2020
-   License:     MIT
-   Maintainer:  skyler.soss@gmail.com
-   Stability:   experimental
-   Portability: ghc-8.8.4
 
-   This datatype represents s-expressions in accordance with r7rs.
-   Datum labels are not supported.
--}
 module Language.Scheme.L0.Ast
     ( module Language.Scheme.L0.Ast
     ) where
 
--- import           Control.Comonad
--- import           Control.Comonad.Cofree
-import           Control.DeepSeq        (NFData)
-import           Data.Char              (chr, isAlphaNum, isPrint, ord)
-import           Data.Deriving
-import           Data.Functor.Classes
--- import           Data.Functor.Foldable  (histo)
-import           Data.Hashable          (Hashable)
-import           Data.Kind              (Type)
-import           Data.List.NonEmpty     (NonEmpty ((:|)))
-import           Data.Monoid            (Endo (Endo, appEndo))
-import           Data.String            (IsString (fromString))
-import           Data.Text              (Text)
-import           Data.Text              (Text)
-import qualified Data.Text              as Text
-import           Data.Word              (Word8)
-import           GHC.Generics           (Generic)
-import           Numeric                (showGFloat, showIntAtBase)
-import           Text.Read              (Read (readPrec))
-import           Type.OpenADT
-import           Type.OpenADT.TH
-import           Uft.Pretty
-import           Uft.Util
+import           Control.Monad.Trans (lift)
+import           Control.Monad.Trans.State
+import           Control.Monad.Trans.Except
+import           Control.Lens               (preview)
+import           Data.HashMap.Strict        (HashMap)
+import qualified Data.HashMap.Strict        as HashMap
+import           Data.Text                  (Text)
+import           Language.Scheme.SExp.Ast
+import           Data.Bifunctor (first)
+import           Language.Scheme.SExp.Class
+import           Uft.Primitives
 
--- * Names
--- These are needed because symbols can be any sequence of characters
--- In addition, the original name of the symbol must be retained for the form (quote x)
+data L0
+    = EDatum SExp
+    | EDefine Text L0
+    | ELet [(Text, L0)] L0
+    | ELetRec [(Text, L0)] L0
+    | ELetRecStar [(Text, L0)] L0
+    | ELambda [Text] L0
+    | EBegin [L0]
+    | ELocalSet Text L0
+    | EGlobalSet Text L0
+    | EIf L0 L0 L0
+    | EWhile L0 L0
+    | ELocalVar Text
+    | EGlobalVar Text
+    | EApply L0 [L0]
+    | EPrimApply Prim [L0]
 
-data Name = N
-    { _name_base :: !Text
-    , _name_id   :: !(Maybe Int)
-    }
-    deriving (Show, Eq, Ord, Read, Generic, NFData, Hashable)
-
-pattern Name :: Text -> Name
-pattern Name x <- N x _
-    where Name x = N x Nothing
-{-# COMPLETE Name #-}
-
-unName :: Name -> Text
-unName (N base gensym) = base <> maybe "" (Text.cons '.' . tshow) gensym
-
-instance Pretty Name where
-    pretty = pretty . unName
-
-instance IsString Name where
-    fromString = Name . fromString
-
--- * L0: S-expressions
--- The language is first parsed as a sequence of s-expressions
-
-type L0 =
-    '[ CharF
-     , StringF
-     , SymbolF
-     , BoolF
-     , NumF
-     , ByteVectorF
-     , EmptyF
-     , PairF
-     , VectorF
-     ]
-
-newtype CharF (a :: Type) = CharF' Char
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
-newtype StringF (a :: Type) = StringF' Text
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
-newtype SymbolF (a :: Type) = SymbolF' Name
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
-newtype BoolF (a :: Type) = BoolF' Bool
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
-newtype NumF (a :: Type) = NumF' Double
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
-newtype ByteVectorF (a :: Type) = ByteVectorF' [Word8]
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
-data EmptyF (a :: Type) = EmptyF'
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
-data PairF a = PairF' a a
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
-newtype VectorF a = VectorF' [a]
-    deriving (Show, Eq, Ord, Read, Functor, Foldable, Traversable)
-
--- * Deriving stuff
-derive [deriveOpenADT, deriveShow1, deriveEq1, deriveOrd1, deriveRead1]
-    [''CharF, ''StringF, ''SymbolF, ''BoolF, ''NumF, ''ByteVectorF, ''EmptyF, ''PairF, ''VectorF]
-
--- * Pretty-printing
-
-instance PrettyF CharF where
-    prettyF' (CharF' '\a')   = "#\\alarm"
-    prettyF' (CharF' '\b')   = "#\\backspace"
-    prettyF' (CharF' '\DEL') = "#\\delete"
-    prettyF' (CharF' '\ESC') = "#\\escape"
-    prettyF' (CharF' '\n')   = "#\\newline"
-    prettyF' (CharF' '\0')   = "#\\null"
-    prettyF' (CharF' '\r')   = "#\\return"
-    prettyF' (CharF' ' ' )   = "#\\space"
-    prettyF' (CharF' '\t')   = "#\\tab"
-    prettyF' (CharF' c)
-      | isPrint c = "#\\" <> pretty c
-      | otherwise = "#\\x" <> pretty (showHex' (ord c) "")
-
-instance PrettyF StringF where
-    prettyF' (StringF' s) = dquotes $ pretty (Text.concatMap escape s) where
-        escape :: Char -> Text
-        escape '\a' = "\\a"
-        escape '\b' = "\\b"
-        escape '\n' = "\\n"
-        escape '\r' = "\\r"
-        escape '\t' = "\\t"
-        escape '\\' = "\\\\"
-        escape c
-          | isPrint c = Text.singleton c
-          | otherwise = "\\x" <> Text.pack (showHex' (ord c) "") <> ";"
-
-instance PrettyF SymbolF where
-    prettyF' (SymbolF' s) = pretty $ Text.concatMap escape $ unName s
+instance Embed L0 where
+    embed = \case
+        EDatum sexp       -> SList ["quote", sexp]
+        EDefine x e       -> SList ["define", SSymbol x, embed e]
+        ELet bs e         -> SList ["let", SList (embedBinds bs), embed e]
+        ELetRec bs e      -> SList ["letrec", SList (embedBinds bs), embed e]
+        ELetRecStar bs e  -> SList ["letrec*", SList (embedBinds bs), embed e]
+        ELambda args e    -> SList ["lambda", SList (map SSymbol args), embed e]
+        EBegin es         -> SList ("begin" : map embed es)
+        ELocalSet x e     -> SList ["set!", SSymbol x, embed e]
+        EGlobalSet x e    -> SList ["set-global!", SSymbol x, embed e]
+        EIf e1 e2 e3      -> SList ["if", embed e1, embed e2, embed e3]
+        EWhile e1 e2      -> SList ["while", embed e1, embed e2]
+        ELocalVar x       -> SSymbol x
+        EGlobalVar x      -> SList ["global", SSymbol x]
+        EApply f args     -> SList (embed f : map embed args)
+        EPrimApply p args -> SList ("prim" : SSymbol (_prim_name p) : map embed args)
         where
-            escape :: Char -> Text
-            escape c
-              | isAlphaNum c || c `elem` ("!$%&*/:<=>?^_~+-@." :: [Char]) = Text.singleton c
-              | otherwise = "\\x" <> Text.pack (showHex' (ord c) "") <> ";"
+            embedBinds = map $ \(x, e) -> SList [SSymbol x, embed e]
 
-instance PrettyF BoolF where
-    prettyF' (BoolF' True)  = "#t"
-    prettyF' (BoolF' False) = "#f"
+-- * Projection
 
-instance PrettyF NumF where
-    prettyF' (NumF' n)
-      | isNaN n      = "+nan.0"
-      | isInfinite n = if n < 0 then "-inf.0" else "+inf.0"
-      | otherwise    =
-          let m = round n
-           in if n == fromInteger m
-                 then pretty m
-                 else pretty (showGFloat Nothing n "")
+data Denotation
+    = DLocal
+    | DGlobal
+    | DSpecial Text
 
-instance PrettyF ByteVectorF where
-    prettyF' (ByteVectorF' bv) = "#u8(" <> hsep (map pretty bv) <> ")"
+type Env = HashMap Text Denotation
 
-instance PrettyF EmptyF where
-    prettyF' EmptyF' = "()"
+newtype M a = M (StateT Env (Except Text) a)
+    deriving newtype (Functor, Applicative, Monad)
 
-instance PrettyF PairF where
-    prettyF' (PairF' a b) = "(" <> a <+> "." <+> b <> ")"
+runM :: M a -> Env -> Either Text a
+runM (M m) env = runExcept $ m `evalStateT` env
 
-instance PrettyF VectorF where
-    prettyF' (VectorF' xs) = "#(" <> hsep xs <> ")"
+getEnv :: M Env
+getEnv = M get
 
-pattern List' :: PairF :< r => [OpenADT r] -> OpenADT r -> OpenADT r
-pattern List' xs x <- (unlist -> (xs, x))
-    where List' xs x = foldr Pair x xs
+extendEnv :: Env -> M ()
+extendEnv env = M $ modify' (env <>)
 
-pattern List :: '[PairF, EmptyF] :<: r => [OpenADT r] -> OpenADT r
-pattern List xs = List' xs Empty
+withExtendEnv :: Env -> M a -> M a
+withExtendEnv env (M m) = M $ do
+    s <- get
+    put env
+    x <- m
+    put s
+    pure x
 
-unlist :: PairF :< r => OpenADT r -> ([OpenADT r], OpenADT r)
-unlist (Pair a b) =
-    case unlist b of
-      (xs, x) -> (a : xs, x)
-unlist x = ([], x)
+prjError :: Text -> M a
+prjError = M . lift . throwE
 
--- | Pretty-print, collapsing nested pairs
-prettyL0
-    :: forall r. (Applies '[Functor, PrettyF] r, '[EmptyF, PairF] :<: r)
-    => OpenADT r
-    -> Doc ASTStyle
-prettyL0 = parenIfPair . cata alg where
-    -- normal = 0
-    -- empty  = 1
-    -- pair   = 2
-    parenIfPair :: (Int, Doc ASTStyle) -> Doc ASTStyle
-    parenIfPair (2, d) = parens d
-    parenIfPair (_, d) = d
-    alg :: Sum r (Int, Doc ASTStyle) -> (Int, Doc ASTStyle)
-    alg = \case
-        PairF a (1, _) -> (2, parenIfPair a)
-        PairF a (2, b) -> (2, parenIfPair a <+> b)
-        PairF a (_, b) -> (2, parenIfPair a <+> "." <+> b)
-        EmptyF         -> (1, "()")
-        x              -> (0, prettyF' (fmap snd x))
+--
+
+instance Project L0 where
+    project = flip runM defaultEnv . traverse go where
+        begin :: [L0] -> L0
+        begin [x] = x
+        begin es  = EBegin es
+        letrecstar :: [(Text, L0)] -> L0 -> L0
+        letrecstar [] = id
+        letrecstar binds = ELetRecStar binds
+
+        -- TODO: Handle local (define)
+        projectLambda :: SExp -> M L0
+        projectLambda x = do
+            env <- getEnv
+            case x of
+              SList (_ : SList (traverse (preview _SSymbol) -> Just args) : body) ->
+                  withExtendEnv (HashMap.fromList (map (,DLocal) args)) $ do
+                      body' <- traverse go body
+                      pure $ ELambda args $ begin body'
+              _ -> prjError "Invalid lambda syntax"
+
+        projectBegin :: SExp -> M L0
+        projectBegin (SList (_ : es)) = EBegin <$> traverse go es
+        projectBegin _ = prjError "Invalid begin syntax"
+
+        projectQuote :: SExp -> M L0
+        projectQuote (SList [_, x]) = pure $ EDatum x
+        projectQuote _ = prjError "Invalid quote syntax"
+
+        projectDefine :: SExp -> M L0
+        projectDefine x = do
+            env <- getEnv
+            case x of
+              SList (_ : SList (traverse (preview _SSymbol) -> Just (name : args)) : body) -> do
+                  extendEnv $ HashMap.fromList (map (,DGlobal) args)
+                  body' <- traverse go body
+                  pure $ EDefine name $ ELambda args (begin body')
+              SList [_, SSymbol name, e] -> do
+                  extendEnv $ HashMap.singleton name DGlobal
+                  e' <- go e
+                  pure $ EDefine name e'
+              _ -> prjError "Invalid define syntax"
+
+        projectSet :: SExp -> M L0
+        projectSet x = do
+            env <- getEnv
+            case x of
+              SList [_, SSymbol x, e]
+                | Just DLocal <- HashMap.lookup x env -> ELocalSet x <$> go e
+                | Just DGlobal <- HashMap.lookup x env -> EGlobalSet x <$> go e
+              _ -> prjError "Invalid set! syntax"
+
+        projectIf :: SExp -> M L0
+        projectIf = \case
+            SList [_, e1, e2, e3] -> EIf <$> go e1 <*> go e2 <*> go e3
+            SList [_, e1, e2] -> EIf <$> go e1 <*> go e2 <*> pure (EPrimApply (prim "void") [])
+            _ -> prjError "Invalid if syntax"
+
+        projectWhile :: SExp -> M L0
+        projectWhile = \case
+            SList (_ : e : es) -> EWhile <$> go e <*> fmap begin (traverse go es)
+            _ -> prjError "Invalid while syntax"
+
+        letBind :: SExp -> Maybe (Text, SExp)
+        letBind (SList [SSymbol x, e]) = Just (x, e)
+        letBind _ = Nothing
+
+        projectLet :: SExp -> M L0
+        projectLet sexp = do
+            env <- getEnv
+            case sexp of
+              SList (_ : SList binds : body)
+                | Just bs <- traverse letBind binds -> do
+                    let env' = map ((,DLocal) . fst) bs
+                    bs' <- traverse (traverse go) bs
+                    body' <- withExtendEnv (HashMap.fromList env') $ traverse go body
+                    pure $ ELet bs' (begin body')
+
+        projectLetstar :: SExp -> M L0
+        projectLetstar sexp = do
+            env <- getEnv
+            case sexp of
+              SList (_ : SList binds : body)
+                | Just bs <- traverse letBind binds -> do
+                    let f :: M L0 -> (Text, SExp) -> M L0
+                        f acc (x, e) =
+                            withExtendEnv (HashMap.singleton x DLocal) $ do
+                                e' <- go e
+                                ELet [(x, e')] <$> acc
+                     in foldl f (begin <$> traverse go body) bs
+
+        projectLetrec :: SExp -> M L0
+        projectLetrec sexp = do
+            env <- getEnv
+            case sexp of
+              SList (_ : SList binds : body)
+                | Just bs <- traverse letBind binds -> do
+                    let env' = HashMap.fromList $ map ((,DLocal) . fst) bs
+                    bs' <- withExtendEnv env' $ traverse (traverse go) bs
+                    body' <- withExtendEnv env' $ traverse go body
+                    pure $ ELetRec bs' (begin body')
+
+        projectLetrecstar :: SExp -> M L0
+        projectLetrecstar sexp = do
+            env <- getEnv
+            case sexp of
+              SList (_ : SList binds : body)
+                | Just bs <- traverse letBind binds -> do
+                    let env' = HashMap.fromList $ map ((,DLocal) . fst) bs
+                    bs' <- withExtendEnv env' $ traverse (traverse go) bs
+                    body' <- withExtendEnv env' $ traverse go body
+                    pure $ ELetRecStar bs' (begin body')
+
+        defaultEnv :: Env
+        defaultEnv = HashMap.fromList $ map (\x -> (x, DSpecial x)) $
+            [ "lambda"
+            , "begin"
+            , "quote"
+            , "define"
+            , "set!"
+            , "if"
+            , "while"
+            , "let"
+            , "let*"
+            , "letrec"
+            , "letrec*"
+            ]
+
+        go :: SExp -> M L0
+        go sexp = do
+            env <- getEnv
+            case sexp of
+              SSymbol x
+                | Just DGlobal <- HashMap.lookup x env -> pure $ EGlobalVar x
+                | Just DSpecial{} <- HashMap.lookup x env -> prjError $ "Invalid " <> x <> " synax"
+                | otherwise -> pure $ ELocalVar x
+              SList (SSymbol x : _)
+                | Just (DSpecial n) <- HashMap.lookup x env ->
+                    case n of
+                      "begin"   -> projectBegin      sexp
+                      "lambda"  -> projectLambda     sexp
+                      "quote"   -> projectQuote      sexp
+                      "define"  -> projectDefine     sexp
+                      "set!"    -> projectSet        sexp
+                      "if"      -> projectIf         sexp
+                      "while"   -> projectWhile      sexp
+                      "let"     -> projectLet        sexp
+                      "let*"    -> projectLetstar    sexp
+                      "letrec"  -> projectLetrec     sexp
+                      "letrec*" -> projectLetrecstar sexp
+                      _ -> error $ "Invalid special denotation: " ++ show n
+              SList (f:args) -> EApply <$> go f <*> traverse go args
+              SChar{}       -> pure $ EDatum sexp
+              SString{}     -> pure $ EDatum sexp
+              SBool{}       -> pure $ EDatum sexp
+              SByteVector{} -> pure $ EDatum sexp
+              SNum{}        -> pure $ EDatum sexp
+              SVector{}     -> prjError $ "Vector in non-quoted position"
+              SEmpty        -> prjError $ "Empty-list in non-quoted position"
+              SPair{}       -> prjError $ "Invalid improper list"
 
 

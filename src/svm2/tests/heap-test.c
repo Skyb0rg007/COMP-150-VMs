@@ -22,7 +22,7 @@ static void test1(void **state)
 {
     struct svm_vm_t *vm = *state;
     for (int i = 0; i < 100; i++) {
-        void *p = svm_gc_alloc(vm, 128);
+        void *p = svm_heap_alloc(vm, 128);
         assert_ptr_not_equal(p, NULL);
     }
 }
