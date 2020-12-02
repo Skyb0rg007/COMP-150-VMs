@@ -22,5 +22,6 @@ endfunction()
 svm_test(string-test)
 svm_test(vector-test)
 svm_test(heap-test)
+svm_test(hash-test)
 svm_test(playground)
 

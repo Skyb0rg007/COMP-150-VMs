@@ -7,10 +7,13 @@ project(SVM
     LANGUAGES C)
 
 ## Settings
-set(CMAKE_C_FLAGS_DEBUG "-g -fno-omit-frame-pointer -fsanitize=address")
-set(CMAKE_LINKER_FLAGS_DEBUG "-g -fno-omit-frame-pointer -fsanitize=address")
-# set(CMAKE_C_FLAGS_DEBUG "-g")
-# set(CMAKE_LINKER_FLAGS_DEBUG "-g")
+if(TRUE)
+    set(CMAKE_C_FLAGS_DEBUG "-g -fno-omit-frame-pointer -fsanitize=address")
+    set(CMAKE_LINKER_FLAGS_DEBUG "-g -fno-omit-frame-pointer -fsanitize=address")
+else()
+    set(CMAKE_C_FLAGS_DEBUG "-g")
+    set(CMAKE_LINKER_FLAGS_DEBUG "-g")
+endif()
 
 ## Dependencies
 find_package(Doxygen MODULE OPTIONAL_COMPONENTS dot)
