@@ -14,8 +14,9 @@
 #include "check-expect.h"
 #include "print.h"
 
+#include "vmstate.h"
+
 static char *checks;
-static Value checkv;
 
 static int ntests = 0;
 static int npassed = 0;
@@ -27,24 +28,25 @@ static char *copy(const char *s) {
   return t;
 }
 
-void check(const char *source, Value v) {
+void check(struct VMState *vm, const char *source, Value v) {
   assert(checks == NULL);
   checks = copy(source);
-  checkv = v;
+  vm->checkv = v;
 }
 
-void expect(const char *source, Value expectv) {
+void expect(struct VMState *vm, const char *source, Value expectv) {
   (void)source;
   ntests++;
   assert(checks != NULL);
-  if (eqtests (checkv, expectv)) {
+  if (eqtests (vm->checkv, expectv)) {
     npassed++;
   } else {
     fprint(stderr, "Check-expect failed: expected %s to evaluate to %v, "
-           "but it's %v.\n", checks, expectv, checkv);
+           "but it's %v.\n", checks, expectv, vm->checkv);
   }
   free(checks);
   checks = NULL;
+  vm->checkv = nilValue;
 }
 
 void check_assert(const char *source, Value v) {

@@ -2285,7 +2285,7 @@ val primitiveBasis =
                      , "(define min (x y) (if (< x y) x y))"
                      , ";  predefined uScheme functions S151a "
                      , "(define negated (n) (- 0 n))"
-                     , "(define mod (m n) (- m (* n (/ m n))))"
+                     , "(define mod (m n) (- m (* n (idiv m n))))"
                      , "(define gcd (m n) (if (= n 0) m (gcd n (mod m n))))"
                      , "(define lcm (m n) (if (= m 0) 0 (* m (/ n (gcd m n)))))"
                      , ";  predefined uScheme functions S151e "
@@ -2353,6 +2353,18 @@ fun runAs interactivity =
 (* type declarations for consistency checking *)
 val _ = op runAs : interactivity -> unit
 
+fun runPathAs interactivity "-" = runAs interactivity
+  | runPathAs interactivity path =
+  let val _ = setup_error_format interactivity
+      val prompts = if prompts interactivity then stdPrompts else noPrompts
+      val fd = TextIO.openIn path
+      val xdefs = filexdefs (path, fd, prompts)
+  in  ignore (readEvalPrintWith eprintln (xdefs, initialBasis, interactivity))
+      before TextIO.closeIn fd
+  end 
+(* type declarations for consistency checking *)
+val _ = op runAs : interactivity -> unit
+
 
 (*****************************************************************)
 (*                                                               *)
@@ -2361,6 +2373,14 @@ val _ = op runAs : interactivity -> unit
 (*****************************************************************)
 
 (* code that looks at command-line arguments and calls [[runAs]] to run the interpreter S214d *)
+
+fun strip_option [] = (NONE, [])
+  | strip_option (arg :: args) =
+      if String.isPrefix "-" arg then
+          (SOME arg, args)
+      else
+          (NONE, arg :: args)
+
 val actions =
   [ ("",    fn () => runAs (NOT_PROMPTING, NOT_PRINTING))
   , ("-v",  fn () => runAs (NOT_PROMPTING, PRINTING))
@@ -2382,7 +2402,7 @@ fun action option =
      | NONE => usage()
 
 
-val _ = case CommandLine.arguments ()
-          of []     => action ""
-           | [option] => action option
+val _ = case strip_option (CommandLine.arguments ())
+          of (opt, []) => action (getOpt (opt, ""))
+           | (NONE, files) => app (runPathAs (NOT_PROMPTING, NOT_PRINTING)) files
            | _      =>   usage ()

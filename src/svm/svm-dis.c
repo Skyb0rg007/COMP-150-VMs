@@ -15,13 +15,20 @@
 
 static const char *showpc;
 
-static void dismodules(VMState vm, Modules ms) {
-  for ( ; ms; ms = ms->next) {
-    for (int i = 0; i < ms->module->size; i++) {
-      if (showpc) printf("%3d: ", i);
-      printasm(stdout, vm, ms->module->instructions[i]);
-      fputs("\n", stdout);
-    }
+static void dismodule(VMState vm, struct VMFunction *module) {
+  for (int i = 0; i < module->size; i++) {
+    if (showpc) printf("%3d: ", i);
+    printasm(stdout, vm, module->instructions[i]);
+    fputs("\n", stdout);
+  }
+}
+
+static void disfile(VMState vm, FILE *input) {
+  for ( struct VMFunction *module = loadmodule(vm, input)
+      ; module
+      ; module = loadmodule(vm, input)
+      ) {
+    dismodule(vm, module);
   }
 }
 
@@ -34,16 +41,12 @@ int main(int argc, char **argv) {
     showpc = svmdebug_value("pc");
 
     if (argc == 1) {
-      Modules ms = loadmodules(vm, stdin);
-      dismodules(vm, ms);
-      freemodules(&ms);
+      disfile(vm, stdin);
     } else {
       for (int i = 1; i < argc; i++) {
         FILE *exe = strcmp(argv[i], "-") == 0 ? stdin : fopen(argv[i], "r");
         assert(exe);
-        Modules ms = loadmodules(vm, exe);
-        dismodules(vm, ms);
-        freemodules(&ms);
+        disfile(vm, exe);
         if (exe != stdin)
           fclose(exe);
       }

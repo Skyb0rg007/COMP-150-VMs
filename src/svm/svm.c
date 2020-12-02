@@ -24,11 +24,15 @@
 #include "vmstate.h"
 #include "vmstring.h"
 
-static void runmodules(struct VMState *vm, Modules ms) {
-    for ( ; ms; ms = ms-> next)
-        vmrun(vm, ms->module);
+static void dofile(struct VMState *vm, FILE *input) { 
+  for ( struct VMFunction *module = loadmodule(vm, input)
+      ; module
+      ; module = loadmodule(vm, input)
+      ) {
+    vmrun(vm, module);
+  }
+  report_unit_tests();
 }
-
 
 int main(int argc, char **argv) {
     itable_init();
@@ -38,18 +42,12 @@ int main(int argc, char **argv) {
     VMState vm = newstate();
 
     if (argc == 1) {
-      Modules ms = loadmodules(vm, stdin);
-      runmodules(vm, ms);
-      freemodules(&ms);
-      report_unit_tests();
+      dofile(vm, stdin);
     } else {
       for (int i = 1; i < argc; i++) {
         FILE *exe = strcmp(argv[i], "-") == 0 ? stdin : fopen(argv[i], "r");
         assert(exe);
-        Modules ms = loadmodules(vm, exe);
-        runmodules(vm, ms);
-        report_unit_tests();
-        freemodules(&ms);
+        dofile(vm, exe);
         if (exe != stdin)
           fclose(exe);
       }

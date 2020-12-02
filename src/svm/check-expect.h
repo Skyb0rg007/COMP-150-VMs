@@ -16,8 +16,10 @@
 //
 // The protocol amounts to "check before expect."
 
-void check       (const char *source, Value v);
-void expect      (const char *source, Value v);
+struct VMState;
+
+void check       (struct VMState *vm, const char *source, Value v);
+void expect      (struct VMState *vm, const char *source, Value v);
 void check_assert(const char *source, Value v);
 
 void report_unit_tests(void);

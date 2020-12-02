@@ -44,9 +44,6 @@ static Instruction
   //
   // If the opcode is not recognized, set `saw_a_bad_opcode` and return 0.
 
-static Modules mkModules(struct VMFunction *first, Modules rest);
-  // using malloc, make a cons cell for a linked list of modules
-
 
 //// The function you will write
 
@@ -111,7 +108,7 @@ static bool has_input(FILE *fd) {
 }
 
 
-static struct VMFunction *loadmodule(VMState vm, FILE *vofile) {
+struct VMFunction *loadmodule(VMState vm, FILE *vofile) {
   // precondition: `vofile` has input remaining
 
   static Name dotloadname, modulename;
@@ -119,6 +116,9 @@ static struct VMFunction *loadmodule(VMState vm, FILE *vofile) {
     dotloadname = strtoname(".load");
     modulename  = strtoname("module");
   }
+
+  if (!has_input(vofile))
+    return NULL;
 
   // read a line from `vofile` and tokenize it
   char *buffer = NULL;
@@ -146,33 +146,7 @@ static struct VMFunction *loadmodule(VMState vm, FILE *vofile) {
 }
 
 
-Modules loadmodules(VMState vm, FILE *vofile) {
-  if (has_input(vofile)) {
-    struct VMFunction *module = loadmodule(vm, vofile); // load the first
-    return mkModules(module, loadmodules(vm, vofile)); // and iterate
-  } else {
-    return NULL;
-  }
-}
-    
-
 ///// utility functions
-
-static Modules mkModules(struct VMFunction *first, Modules rest) {
-  Modules ms = malloc(sizeof(*ms));
-  assert(ms);
-  ms->module = first;
-  ms->next   = rest;
-  return ms;
-}
-
-void freemodules(Modules *msp) {
-  if (*msp) {
-    freemodules(&(*msp)->next);
-    free(*msp);
-    *msp = NULL;
-  }
-}
 
 static Instruction
 parse_instruction(VMState vm, Name opcode, Tokens operands, unsigned *maxregp) {
