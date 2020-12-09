@@ -1,0 +1,7 @@
+.load module 6
+loadliteral 0 2
+loadliteral 1 5
+subtract 0 0 1
+check 0 string 7 40 45 32 50 32 53 41
+loadliteral 0 -3
+expect 0 string 2 45 51

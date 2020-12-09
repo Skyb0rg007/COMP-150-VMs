@@ -52,6 +52,7 @@ struct svm_value_t {
         struct svm_activation_t *as_continuation;
     } rep;
 };
+static_assert(sizeof(struct svm_value_t) == 16, "Values are 128 bits");
 
 extern void svm_value_print(struct svm_value_t *val, FILE *outfile);
 
@@ -99,11 +100,23 @@ SVM_GETTER_SETTER0(emptylist, EMPTYLIST)
 #undef SVM_GETTER_SETTER
 #undef SVM_GETTER_SETTER0
 
-/** @brief Returns true if the value is truthy, false otherwise */
+/* Returns true if the value is truthy, false otherwise */
 static inline bool svm_value_truthy(struct svm_value_t *x)
 {
     return x->tag != SVM_VALUE_TAG_BOOLEAN || x->rep.as_boolean;
 }
+/* Returns true if the value is #f, false otherwise */
+static inline bool svm_value_false(struct svm_value_t *x)
+{
+    return x->tag == SVM_VALUE_TAG_BOOLEAN && !x->rep.as_boolean;
+}
+
+/* Produce a hash */
+extern uint32_t svm_value_hash(struct svm_value_t *val) SVM_ATTR_NONNULL(1);
+/* Scheme eq? */
+extern bool svm_value_eq(const struct svm_value_t *a, const struct svm_value_t *b) SVM_ATTR_NONNULL(1);
+/* Scheme equal? */
+extern bool svm_value_equal(const struct svm_value_t *a, const struct svm_value_t *b) SVM_ATTR_NONNULL(1);
 
 /****************************************************************************
  *
@@ -116,6 +129,13 @@ struct svm_string_t {
     size_t length;
     uint32_t hash;
     struct svm_string_t *next_interned;
+    char bytes[];
+};
+
+struct svm_symbol_t {
+    struct svm_symbol_t *forwarded;
+    size_t length;
+    uint32_t hash;
     char bytes[];
 };
 

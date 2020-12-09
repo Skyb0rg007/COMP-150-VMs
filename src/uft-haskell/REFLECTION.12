@@ -1,0 +1,15 @@
+Testing, part I: inputs. You can create tests for vScheme code.
+
+Benchmarking. You can create or port a benchmark.
+
+Benchmarking in production. You can port a benchmark to a production system.
+
+Testing, part II: outputs. You understand what testing tells you about the functional capabilities of your system.
+
+Performance tuning. You understand space-time tradeoffs in garbage collection.
+
+Performance. You understand what benchmark performance tells you about your system.
+
+Testing and performance combined. You can achieve a combination of functionality and performance.
+
+Performance in production. You understand how your system compares with a production system.

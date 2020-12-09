@@ -49,12 +49,11 @@ prims = HashMap.fromList $ map (\(x, k, n, l) -> (x, Prim k x n l)) m
         , (,,,) "-"            SetsRegister 2 False
         , (,,,) "+"            SetsRegister 2 False
         , (,,,) "*"            SetsRegister 2 False
-        , (,,,) "cons"         SetsRegister 2 False
         , (,,,) "copyreg"      SetsRegister 1 False
         , (,,,) "getglobal"    SetsRegister 1 True
         , (,,,) "hash"         SetsRegister 1 False
         , (,,,) "loadliteral"  SetsRegister 1 True
-        , (,,,) "void"         SetsRegister 0 False
+        , (,,,) "void"         SetsRegister 1 False
         , (,,,) "check_assert" HasEffect    2 True
         , (,,,) "check"        HasEffect    2 True
         , (,,,) "expect"       HasEffect    2 True
@@ -63,7 +62,23 @@ prims = HashMap.fromList $ map (\(x, k, n, l) -> (x, Prim k x n l)) m
         , (,,,) "printu"       HasEffect    1 False
         , (,,,) "setglobal"    HasEffect    2 True
         , (,,,) "if"           HasEffect    1 False
+
+        , (,,,) "cons"         SetsRegister 2 False
+        , (,,,) "car"          SetsRegister 2 False
+        , (,,,) "cdr"          SetsRegister 2 False
+
         , (,,,) "call"         HasEffect    3 False
+        , (,,,) "tailcall"     HasEffect    2 False
+        , (,,,) "return"       HasEffect    1 False
+
+        , (,,,) "boxq"         SetsRegister 2 False
+        , (,,,) "box"          SetsRegister 2 False
+        , (,,,) "unbox"        SetsRegister 2 False
+        , (,,,) "set_box"      HasEffect    2 False
+
+        , (,,,) "closure"      SetsRegister 3 False
+        , (,,,) "getclslot"    SetsRegister 3 False
+        , (,,,) "setclslot"    HasEffect    3 False
         ]
 
 prim :: Text -> Prim

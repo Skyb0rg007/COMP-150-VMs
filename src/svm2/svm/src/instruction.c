@@ -6,40 +6,28 @@
 void svm_instruction_print(svm_instruction_t instr, FILE *outfile)
 {
     enum svm_opcode_t opcode = svm_instruction_opcode(instr);
-    const char *name;
     switch (opcode)
     {
-        #define X(lower, _title, upper, format, _desc) \
-            case SVM_OPCODE_##upper:                   \
-                name = #lower;                         \
-                goto format;
-        SVM_FOREACH_OPCODE(X)
+        #define R0(fmt) fprintf(stderr, fmt);
+        #define R1(fmt) fprintf(stderr, fmt, svm_instruction_x(instr));
+        #define R2(fmt) fprintf(stderr, fmt, svm_instruction_x(instr), svm_instruction_y(instr));
+        #define R3(fmt) fprintf(stderr, fmt, svm_instruction_x(instr), svm_instruction_y(instr), svm_instruction_z(instr));
+        #define R1LIT(fmt) fprintf(stderr, fmt, svm_instruction_x(instr), svm_instruction_yz(instr));
+        #define R0I24(fmt) fprintf(stderr, fmt, svm_instruction_xyz(instr));
+        #define X(lower, _title, upper, format, fmt, _desc, _code) \
+            case SVM_OPCODE_##upper:                               \
+                format(fmt);                                       \
+                break;
+        #include <svm/opcode-data.h>
+        #undef R0
+        #undef R1
+        #undef R2
+        #undef R3
+        #undef R1LIT
+        #undef R0I24
         #undef X
 
         default:
-            fprintf(outfile, "<undefined: %#x>", instr);
+            fprintf(outfile, "undefined instruction: %#x", instr);
     }
-
-R0:
-    fprintf(outfile, "%s", name);
-    return;
-R1:
-    fprintf(outfile, "%s %"PRIu8"", name, svm_instruction_x(instr));
-    return;
-R2:
-    fprintf(outfile, "%s %"PRIu8" %"PRIu8"",
-            name, svm_instruction_x(instr), svm_instruction_y(instr));
-    return;
-R3:
-    fprintf(outfile, "%s %"PRIu8" %"PRIu8" %"PRIu8"",
-            name, svm_instruction_x(instr), svm_instruction_y(instr), svm_instruction_z(instr));
-    return;
-R1LIT:
-    fprintf(outfile, "%s %"PRIu8" %"PRIu16"",
-            name,
-            svm_instruction_x(instr),
-            svm_instruction_yz(instr));
-    return;
-R0I24:
-    fprintf(outfile, "%s %"PRIu32"\n", name, svm_instruction_xyz(instr));
 }

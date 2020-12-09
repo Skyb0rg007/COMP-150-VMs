@@ -1,5 +1,5 @@
 
-let ale_c_gcc_options = '-Isvm/include -Isvm/src -I_build/svm/include -D_GNU_SOURCE -std=c99 -Wall -Wextra -pedantic'
+let ale_c_gcc_options = '-Isvm/include -Isvm/src -I_build/svm/include -D_GNU_SOURCE -std=c99 -Wall -Wextra'
 let &path = 'svm/include,svm/src,_build/svm/include,/usr/include,/usr/lib/gcc/x86_64-redhat-linux/10/include/,/usr/local/include/'
 
 set makeprg=cmake\ --build\ _build

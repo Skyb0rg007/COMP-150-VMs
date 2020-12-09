@@ -1,0 +1,14 @@
+.load module 6
+
+.load function 0 0 5
+    loadliteral 1 2.0
+    getclslot 2 0 0
+    add 2 1 2
+    println 2
+    return 1
+
+closure 3 0 1
+loadliteral 1 3.1415
+setclslot 3 1 0
+call 1 3 3
+println 1

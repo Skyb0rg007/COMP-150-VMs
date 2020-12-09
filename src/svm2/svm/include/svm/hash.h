@@ -1,8 +1,10 @@
-/** @file svm/hash.h
- * @author Skye Soss
- * @copyright MIT
- * @brief Hashtables and hashing functions
- */
+    /** @file svm/hash.h
+     * @author Skye Soss
+     * @copyright MIT
+     * @brief Hashtables and hashing functions
+     *
+     * This implementation comes from khash.h in klib
+     */
 #ifndef SVM_HASH_H
 #define SVM_HASH_H
 
@@ -11,17 +13,12 @@
 
 #define SVM_HASH_UPPER 0.77
 
-#define key_t int
-#define val_t int
-#define key_hash(x)           (x)
-#define key_eq(a, b)          ((a) == (b))
-
-typedef struct {
+struct svm_hash_t {
     uint32_t n_buckets, size, n_occupied, upper_bound;
     uint32_t *flags;
-    key_t *keys;
-    val_t *vals;
-} svm_hash_t;
+    struct svm_value_t *keys;
+    struct svm_value_t *vals;
+};
 
 /* Private helper functions */
 
@@ -76,15 +73,15 @@ static inline uint32_t svm_hash__roundup(uint32_t x)
 
 #define svm_hash_begin(h) ((uint32_t)0)
 #define svm_hash_end(h)   ((h)->n_buckets)
-#define svm_hash_foreach(i, key, val, h)                                              \
-    for ((i) = svm_hash_begin(h); (i) != svm_hash_end(h); (i)++)                      \
-        if ((svm_hash_exists((h), (i))                                                \
-                    ? ((key) = svm_hash_key(h, i), (val) = svm_hash_val(h, i), false) \
-                    : true))                                                          \
-            continue;                                                                 \
-        else
+#define svm_hash_foreach(i, key, val, h)                                          \
+    for ((i) = svm_hash_begin(h); (i) != svm_hash_end(h); (i)++)                  \
+    if ((svm_hash_exists((h), (i))                                                \
+                ? ((key) = svm_hash_key(h, i), (val) = svm_hash_val(h, i), false) \
+                : true))                                                          \
+                continue;                                                         \
+                else
 
-static inline void svm_hash_init(svm_hash_t *h)
+static inline void svm_hash_init(struct svm_hash_t *h)
 {
     memset(h, 0x0, sizeof *h);
     h->n_buckets = h->size = h->n_occupied = h->upper_bound = 0;
@@ -93,7 +90,7 @@ static inline void svm_hash_init(svm_hash_t *h)
     h->vals = NULL;
 }
 
-static inline void svm_hash_free(svm_hash_t *h, struct svm_allocator_t *alloc)
+static inline void svm_hash_free(struct svm_hash_t *h, struct svm_allocator_t *alloc)
 {
     if (h) {
         svm_free(alloc, h->keys, 0);
@@ -102,7 +99,7 @@ static inline void svm_hash_free(svm_hash_t *h, struct svm_allocator_t *alloc)
     }
 }
 
-static inline void svm_hash_clear(svm_hash_t *h)
+static inline void svm_hash_clear(struct svm_hash_t *h)
 {
     if (h && h->flags) {
         memset(h->flags, 0xaa, svm_hash__fsize(h->n_buckets) * sizeof(uint32_t));
@@ -110,7 +107,7 @@ static inline void svm_hash_clear(svm_hash_t *h)
     }
 }
 
-static inline int svm_hash_get(svm_hash_t *h, key_t key)
+static inline int svm_hash_get(struct svm_hash_t *h, struct svm_value_t key)
 {
     if (!h->n_buckets) {
         return 0;
@@ -119,9 +116,9 @@ static inline int svm_hash_get(svm_hash_t *h, key_t key)
     uint32_t k, i, last, mask, step;
     step = 0;
     mask = h->n_buckets - 1;
-    k = key_hash(key);
+    k = svm_value_hash(&key);
     last = i = k & mask;
-    while (!svm_hash__isempty(h->flags, i) && (svm_hash__isdel(h->flags, i) || !key_eq(h->keys[i], key)))
+    while (!svm_hash__isempty(h->flags, i) && (svm_hash__isdel(h->flags, i) || !svm_value_eq(&h->keys[i], &key)))
     {
         i = (i + (++step)) & mask;
         if (i == last)
@@ -132,7 +129,7 @@ static inline int svm_hash_get(svm_hash_t *h, key_t key)
         : i;
 }
 
-static inline void svm_hash_resize(svm_hash_t *h, uint32_t new_n_buckets, struct svm_allocator_t *alloc)
+static inline void svm_hash_resize(struct svm_hash_t *h, uint32_t new_n_buckets, struct svm_allocator_t *alloc)
 {
     uint32_t *new_flags = NULL;
     uint32_t j = 1;
@@ -147,9 +144,9 @@ static inline void svm_hash_resize(svm_hash_t *h, uint32_t new_n_buckets, struct
         svm_assert_paranoid(new_flags);
         memset(new_flags, 0xaa, size);
         if (h->n_buckets < new_n_buckets) {
-            h->keys = svm_realloc(alloc, h->keys, h->n_buckets * sizeof(key_t), new_n_buckets * sizeof(key_t));
+            h->keys = svm_realloc(alloc, h->keys, h->n_buckets * sizeof(struct svm_value_t), new_n_buckets * sizeof(struct svm_value_t));
             svm_assert_paranoid(h->keys);
-            h->vals = svm_realloc(alloc, h->vals, h->n_buckets * sizeof(val_t), new_n_buckets * sizeof(val_t));
+            h->vals = svm_realloc(alloc, h->vals, h->n_buckets * sizeof(struct svm_value_t), new_n_buckets * sizeof(struct svm_value_t));
             svm_assert_paranoid(h->vals);
         }
     }
@@ -158,14 +155,14 @@ static inline void svm_hash_resize(svm_hash_t *h, uint32_t new_n_buckets, struct
         for (j = 0; j != h->n_buckets; j++)
         {
             if (svm_hash__iseither(h->flags, j) == 0) {
-                key_t key = h->keys[j];
-                val_t val = h->vals[j];
+                struct svm_value_t key = h->keys[j];
+                struct svm_value_t val = h->vals[j];
                 uint32_t new_mask = new_n_buckets - 1;
                 svm_hash__set_isdel_true(h->flags, j);
                 for (;;)
                 {
                     uint32_t k, i, step;
-                    k = key_hash(key);
+                    k = svm_value_hash(&key);
                     i = k & new_mask;
                     step = 0;
 
@@ -174,12 +171,12 @@ static inline void svm_hash_resize(svm_hash_t *h, uint32_t new_n_buckets, struct
                     svm_hash__set_isempty_false(new_flags, i);
                     if (i < h->n_buckets && svm_hash__iseither(h->flags, i) == 0) {
                         {
-                            key_t tmp = h->keys[i];
+                            struct svm_value_t tmp = h->keys[i];
                             h->keys[i] = key;
                             key = tmp;
                         }
                         {
-                            val_t tmp = h->vals[i];
+                            struct svm_value_t tmp = h->vals[i];
                             h->vals[i] = val;
                             val = tmp;
                         }
@@ -193,8 +190,8 @@ static inline void svm_hash_resize(svm_hash_t *h, uint32_t new_n_buckets, struct
             }
         }
         if (h->n_buckets > new_n_buckets) {
-            h->keys = svm_realloc(alloc, h->keys, h->n_buckets * sizeof(key_t), new_n_buckets * sizeof(key_t));
-            h->vals = svm_realloc(alloc, h->vals, h->n_buckets * sizeof(val_t), new_n_buckets * sizeof(val_t));
+            h->keys = svm_realloc(alloc, h->keys, h->n_buckets * sizeof(struct svm_value_t), new_n_buckets * sizeof(struct svm_value_t));
+            h->vals = svm_realloc(alloc, h->vals, h->n_buckets * sizeof(struct svm_value_t), new_n_buckets * sizeof(struct svm_value_t));
         }
         svm_free(alloc, h->flags, svm_hash__fsize(h->n_buckets) * sizeof(uint32_t));
         h->flags = new_flags;
@@ -209,7 +206,7 @@ static inline void svm_hash_resize(svm_hash_t *h, uint32_t new_n_buckets, struct
  *   1 if the key was not there
  *   2 if the slot was in a deleted state
  */
-static inline uint32_t svm_hash_put(svm_hash_t *h, key_t key, int *ret, struct svm_allocator_t *alloc)
+static inline uint32_t svm_hash_put(struct svm_hash_t *h, struct svm_value_t key, int *ret, struct svm_allocator_t *alloc)
 {
     uint32_t x;
     if (h->n_occupied >= h->upper_bound) {
@@ -222,7 +219,7 @@ static inline uint32_t svm_hash_put(svm_hash_t *h, key_t key, int *ret, struct s
     {
         uint32_t k, i, site, last, mask, step;
         x = site = h->n_buckets;
-        k = key_hash(key);
+        k = svm_value_hash(&key);
         mask = h->n_buckets - 1;
         step = 0;
         i = k & mask;
@@ -231,7 +228,7 @@ static inline uint32_t svm_hash_put(svm_hash_t *h, key_t key, int *ret, struct s
             x = i;
         } else {
             last = i;
-            while (!svm_hash__isempty(h->flags, i) && (svm_hash__isdel(h->flags, i) || !key_eq(h->keys[i], key))) {
+            while (!svm_hash__isempty(h->flags, i) && (svm_hash__isdel(h->flags, i) || !svm_value_eq(&h->keys[i], &key))) {
                 if (svm_hash__isdel(h->flags, i)) {
                     site = i;
                 }
@@ -270,7 +267,7 @@ static inline uint32_t svm_hash_put(svm_hash_t *h, key_t key, int *ret, struct s
     return x;
 }
 
-static void svm_hash_del(svm_hash_t *h, uint32_t x)
+static void svm_hash_del(struct svm_hash_t *h, uint32_t x)
 {
     if (x != h->n_buckets && !svm_hash__iseither(h->flags, x)) {
         svm_hash__set_isdel_true(h->flags, x);

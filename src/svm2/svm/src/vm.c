@@ -13,7 +13,14 @@ void svm_vm_init(struct svm_vm_t *vm)
     vm->allocator.fun = svm_default_allocator;
     vm->allocator.ud = NULL;
 
+    /* For check-expect */
+    vm->checks.ntests = 0;
+    vm->checks.npassed = 0;
+    vm->checks.source = NULL;
+    vm->checks.value = NULL;
+
     svm_vector_init(&vm->literals);
+    svm_hash_init(&vm->globals);
     svm_heap_init(vm);
     svm_stringtable_init(vm);
 }
@@ -21,6 +28,7 @@ void svm_vm_init(struct svm_vm_t *vm)
 void svm_vm_free(struct svm_vm_t *vm)
 {
     svm_vector_free(&vm->literals, &vm->allocator);
+    svm_hash_free(&vm->globals, &vm->allocator);
     svm_stringtable_free(vm);
     svm_heap_free(vm);
     memset(vm, 0x0, sizeof *vm);

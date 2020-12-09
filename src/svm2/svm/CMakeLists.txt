@@ -48,6 +48,7 @@ target_include_directories(svmlib
     ${CMAKE_CURRENT_BINARY_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
+target_link_libraries(svmlib PRIVATE m)
 
 add_executable(svm
     src/svm.c)

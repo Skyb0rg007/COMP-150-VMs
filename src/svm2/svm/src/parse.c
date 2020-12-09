@@ -82,7 +82,7 @@ static svm_instruction_t scan_instruction(struct svm_vm_t *vm, int *nregs, char 
     #define handle_R1(upper, desc)                                \
         size_t xlen;                                              \
         const char *xtok = tok(&rest, &xlen);                     \
-        if (tok(&rest, NULL))                                     \
+        if (!xtok || tok(&rest, NULL))                            \
             error_usage(desc);                                    \
         int8_t x = tolong(xtok, xlen);                            \
         *nregs = SVM_MAX(*nregs, x);                              \
@@ -92,7 +92,7 @@ static svm_instruction_t scan_instruction(struct svm_vm_t *vm, int *nregs, char 
         size_t xlen, ylen;                                        \
         const char *xtok = tok(&rest, &xlen);                     \
         const char *ytok = tok(&rest, &ylen);                     \
-        if (tok(&rest, NULL))                                     \
+        if (!xtok || !ytok || tok(&rest, NULL))                   \
             error_usage(desc);                                    \
         int8_t x = tolong(xtok, xlen);                            \
         int8_t y = tolong(ytok, ylen);                            \
@@ -105,7 +105,7 @@ static svm_instruction_t scan_instruction(struct svm_vm_t *vm, int *nregs, char 
         const char *xtok = tok(&rest, &xlen);                     \
         const char *ytok = tok(&rest, &ylen);                     \
         const char *ztok = tok(&rest, &zlen);                     \
-        if (tok(&rest, NULL))                                     \
+        if (!xtok || !ytok || !ztok || tok(&rest, NULL))          \
             error_usage(desc);                                    \
         int8_t x = tolong(xtok, xlen);                            \
         int8_t y = tolong(ytok, ylen);                            \
@@ -118,7 +118,9 @@ static svm_instruction_t scan_instruction(struct svm_vm_t *vm, int *nregs, char 
     #define handle_R1LIT(upper, desc)                             \
         size_t xlen;                                              \
         const char *xtok = tok(&rest, &xlen);                     \
-        int8_t x = tolong(xtok, xlen);                             \
+        if (!xtok)                                                \
+            error_usage(desc);                                    \
+        int8_t x = tolong(xtok, xlen);                            \
         int32_t lit = scan_literal(vm, (char *)rest);             \
         *nregs = SVM_MAX(*nregs, x);                              \
         return svm_instruction_r1lit(SVM_OPCODE_##upper, x, lit);
@@ -126,16 +128,16 @@ static svm_instruction_t scan_instruction(struct svm_vm_t *vm, int *nregs, char 
     #define handle_R0I24(upper, desc)                             \
         size_t xyzlen;                                            \
         const char *xyztok = tok(&rest, &xyzlen);                 \
-        if (tok(&rest, NULL))                                     \
+        if (!xyztok || tok(&rest, NULL))                          \
             error_usage(desc);                                    \
         int32_t xyz = tolong(xyztok, xyzlen);                     \
         return svm_instruction_r0i24(SVM_OPCODE_##upper, xyz);
 
-    #define X(lower, _title, upper, format, desc) \
-        if (tokeq(command, len, #lower)) {        \
-            handle_##format(upper, desc)          \
+    #define X(lower, _title, upper, format, printFmt, desc, _code) \
+        if (tokeq(command, len, #lower)) {                         \
+            handle_##format(upper, desc)                           \
         }
-    SVM_FOREACH_OPCODE(X)
+    #include <svm/opcode-data.h>
     #undef X
 
     error();
@@ -150,66 +152,6 @@ static svm_instruction_t scan_instruction(struct svm_vm_t *vm, int *nregs, char 
     #undef handle_R0I24
 }
 
-/* 
-static svm_instruction_t scan_instruction(struct svm_vm_t *vm, int *nregs, char *line)
-{
-    [>Number of chars left in the line - written by sscanf<]
-    int n = 0;
-    [>Instruction parts<]
-    int8_t x, y, z;
-    int32_t xyz;
-    [>Testers for each type of opcode<]
-    #define test_R0(lower, upper)                                                                           \
-        if (sscanf(line, #lower " %n", &n) == 0 && !line[n]) {                                              \
-            return svm_instruction_r0(SVM_OPCODE_##upper);                                                  \
-        }
-    #define test_R1(lower, upper)                                                                           \
-        if (sscanf(line, #lower " %" SCNd8 " %n", &x, &n) == 1 && !line[n]) {                               \
-            *nregs = SVM_MAX(*nregs, x+1);                                                                      \
-            return svm_instruction_r1(SVM_OPCODE_##upper, x);                                               \
-        }
-    #define test_R2(lower, upper)                                                                           \
-        if (sscanf(line, #lower " %" SCNd8 " %" SCNd8 " %n", &x, &y, &n) == 2 && !line[n]) {                \
-            *nregs = SVM_MAX(*nregs, SVM_MAX(x, y)+1);                                                              \
-            return svm_instruction_r2(SVM_OPCODE_##upper, x, y);                                            \
-        }
-    #define test_R3(lower, upper)                                                                           \
-        if (sscanf(line, #lower " %" SCNd8 " %" SCNd8 " %" SCNd8 " %n", &x, &y, &z, &n) == 3 && !line[n]) { \
-            *nregs = SVM_MAX(*nregs, SVM_MAX(x, SVM_MAX(y, z))+1);                                                      \
-            return svm_instruction_r3(SVM_OPCODE_##upper, x, y, z);                                         \
-        }
-    #define test_R1LIT(lower, upper)                                                                        \
-        if (sscanf(line, #lower " %" SCNd8 " %n", &x, &n) == 1) {                                           \
-            *nregs = SVM_MAX(*nregs, x+1);                                                                      \
-            line += n;                                                                                      \
-            int16_t yz = scan_literal(vm, line);                                                            \
-            return svm_instruction_r1lit(SVM_OPCODE_##upper, x, yz);                                        \
-        }
-    #define test_R0I24(lower, upper)                                                                        \
-        if (sscanf(line, #lower " %" SCNd32 " %n", &xyz, &n) == 1 && !line[n]) {                            \
-            return svm_instruction_r2(SVM_OPCODE_##upper, x, y);                                            \
-        }
-
-    [>Test each opcode in order<]
-    #define X(lower, _title, upper, format, _desc) \
-        test_##format(lower, upper)
-    SVM_FOREACH_OPCODE(X)
-    #undef X
-
-    [>If this line is reached, the input is invalid and we *will* abort<]
-
-    [>Test each opcode in order for error message<]
-    #define X(lower, _title, upper, format, desc)                     \
-        if (strncmp(#lower, line, strlen(#lower)) == 0) {             \
-            line[strlen(line) - 1] = '\0';                            \
-            svm_panic("Invalid line: \"%s\". Usage: %s", line, desc); \
-        }
-    SVM_FOREACH_OPCODE(X)
-    #undef X
-
-    svm_panic("Invalid line: \"%s\".", line);
-}
- */
 static uint32_t scan_literal(struct svm_vm_t *vm, char *literal)
 {
     char *line = literal;
@@ -358,6 +300,7 @@ static struct svm_function_t *parse_function(struct svm_vm_t *vm, int arity, int
     if (line)
         svm_free(&vm->allocator, line, allocated);
     fun->instructions[count] = svm_instruction_r0(SVM_OPCODE_HALT);
+    fun->nregs++;
     return fun;
 }
 

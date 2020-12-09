@@ -6,6 +6,7 @@
 #include <svm/value.h>
 #include <svm/alloc.h>
 #include <svm/vector.h>
+#include <svm/hash.h>
 
 /* Holds info about string interning 
  * Used by the string module
@@ -92,11 +93,21 @@ struct svm_vm_t {
     /* Points to executing activation. This is a GC root. */
     struct svm_activation_t *current;
 
+    /* Data used by check-expect */
+    struct {
+        int ntests, npassed;
+        char *source;
+        struct svm_value_t *value;
+    } checks;
+
     /* Used by memory allocation functions */
     struct svm_allocator_t allocator;
 
     /* Holds literals + functions. Not GCed. */
     svm_vector_t(struct svm_value_t) literals;
+
+    /* Globals */
+    struct svm_hash_t globals;
 
     /* Used by string module to allocate strings. */
     struct svm_stringtable_t stringtable;

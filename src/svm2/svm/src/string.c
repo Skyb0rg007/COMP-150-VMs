@@ -7,9 +7,9 @@
 
 #define is_shortlen(len) ((len) <= SVM_STRING_MAX_SHORTLEN)
 #define is_longlen(len)  ((len) > SVM_STRING_MAX_SHORTLEN)
-#define is_short(s) is_shortlen((s)->length)
-#define is_long(s)  is_longlen((s)->length)
-#define step_size(len) (((len) >> 5) + 1)
+#define is_short(s)      is_shortlen((s)->length)
+#define is_long(s)       is_longlen((s)->length)
+#define step_size(len)   (((len) >> 5) + 1)
 
 void svm_stringtable_init(struct svm_vm_t *vm)
 {
@@ -159,11 +159,9 @@ struct svm_string_t *svm_string_new(struct svm_vm_t *vm, const char *str, size_t
 }
 
 bool svm_string_equal(
-        struct svm_vm_t *vm,
         const struct svm_string_t *s1,
         const struct svm_string_t *s2)
 {
-    (void)vm;
     if (s1 == s2)
         return true;
     if (is_short(s1) || is_short(s2))
@@ -174,9 +172,8 @@ bool svm_string_equal(
     return memcmp(s1->bytes, s2->bytes, s1->length) == 0;
 }
 
-uint32_t svm_string_hash(struct svm_vm_t *vm, struct svm_string_t *s)
+uint32_t svm_string_hash(struct svm_string_t *s)
 {
-    (void)vm;
     if (s->hash == 0)
         s->hash = compute_hash(s->bytes, s->length);
     return s->hash;

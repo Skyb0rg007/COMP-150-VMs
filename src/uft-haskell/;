@@ -1,0 +1,17 @@
+
+; (define (foo x)
+(set foo
+  (lambda (x)
+    (lambda (y)
+      (begin
+        (println x)
+        (println y)))))
+
+(set f (foo 123))
+(set g (foo 456))
+
+(f "one")
+(f "two")
+
+(g "one")
+(g "two")

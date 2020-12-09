@@ -1,12 +1,13 @@
-
-module Language.Scheme.L0.Ast
-    ( module Language.Scheme.L0.Ast
+-- TODO: quasiquote
+module Language.Scheme.L0
+    ( module Language.Scheme.L0
     ) where
 
 import           Control.Monad.Trans (lift)
 import           Control.Monad.Trans.State
 import           Control.Monad.Trans.Except
 import           Control.Lens               (preview)
+import           Data.Text.Prettyprint.Doc  (pretty)
 import           Data.HashMap.Strict        (HashMap)
 import qualified Data.HashMap.Strict        as HashMap
 import           Data.Text                  (Text)
@@ -14,13 +15,13 @@ import           Language.Scheme.SExp.Ast
 import           Data.Bifunctor (first)
 import           Language.Scheme.SExp.Class
 import           Uft.Primitives
+import           Uft.Util
+import           Debug.Trace
 
 data L0
     = EDatum SExp
-    | EDefine Text L0
     | ELet [(Text, L0)] L0
     | ELetRec [(Text, L0)] L0
-    | ELetRecStar [(Text, L0)] L0
     | ELambda [Text] L0
     | EBegin [L0]
     | ELocalSet Text L0
@@ -35,10 +36,8 @@ data L0
 instance Embed L0 where
     embed = \case
         EDatum sexp       -> SList ["quote", sexp]
-        EDefine x e       -> SList ["define", SSymbol x, embed e]
         ELet bs e         -> SList ["let", SList (embedBinds bs), embed e]
         ELetRec bs e      -> SList ["letrec", SList (embedBinds bs), embed e]
-        ELetRecStar bs e  -> SList ["letrec*", SList (embedBinds bs), embed e]
         ELambda args e    -> SList ["lambda", SList (map SSymbol args), embed e]
         EBegin es         -> SList ("begin" : map embed es)
         ELocalSet x e     -> SList ["set!", SSymbol x, embed e]
@@ -55,9 +54,15 @@ instance Embed L0 where
 -- * Projection
 
 data Denotation
-    = DLocal
+    = DLocal -- TODO: Perform Unique generation here
     | DGlobal
-    | DSpecial Text
+    | DSpecial (SExp -> M L0)
+
+instance Show Denotation where
+    showsPrec d = \case
+        DLocal     -> showString "DLocal"
+        DGlobal    -> showString "DGlobal"
+        DSpecial{} -> showParen (d > 10) $ showString "DSpecial <procedure>"
 
 type Env = HashMap Text Denotation
 
@@ -76,7 +81,7 @@ extendEnv env = M $ modify' (env <>)
 withExtendEnv :: Env -> M a -> M a
 withExtendEnv env (M m) = M $ do
     s <- get
-    put env
+    put (env <> s)
     x <- m
     put s
     pure x
@@ -91,20 +96,50 @@ instance Project L0 where
         begin :: [L0] -> L0
         begin [x] = x
         begin es  = EBegin es
-        letrecstar :: [(Text, L0)] -> L0 -> L0
-        letrecstar [] = id
-        letrecstar binds = ELetRecStar binds
 
-        -- TODO: Handle local (define)
+        etaExpand :: Prim -> L0
+        etaExpand p =
+            let arity = _prim_arity p
+                args = take arity ((\n -> "x" <> tshow n) <$> [0 ..])
+             in ELambda args (EPrimApply p (map ELocalVar args))
+
+        -- TODO: Handle local defines
         projectLambda :: SExp -> M L0
         projectLambda x = do
             env <- getEnv
             case x of
               SList (_ : SList (traverse (preview _SSymbol) -> Just args) : body) ->
                   withExtendEnv (HashMap.fromList (map (,DLocal) args)) $ do
-                      body' <- traverse go body
-                      pure $ ELambda args $ begin body'
+                      body' <- projectBody body
+                      pure $ ELambda args body'
               _ -> prjError "Invalid lambda syntax"
+
+        projectBody :: [SExp] -> M L0
+        projectBody [] = prjError "Empty bodies not allowed"
+        projectBody sexps = do
+            env <- getEnv
+            let isDefine :: SExp -> M (Maybe (Text, M L0))
+                isDefine = 
+                    case HashMap.lookup "define" env of
+                      Just DSpecial{} -> \case
+                        SList ("define" : SList (traverse (preview _SSymbol) -> Just (name : args)) : body) -> do
+                            let go' = withExtendEnv (HashMap.fromList (map (,DLocal) args)) . go
+                            pure $ Just (name, ELambda args . begin <$> traverse go' body)
+                        SList ["define", SSymbol x, e] ->
+                            pure $ Just (x, go e)
+                        SPair "define" _ -> prjError "Invalid local define syntax"
+                        _ -> pure Nothing
+                      _ -> const $ pure Nothing
+            let split :: [SExp] -> M ([(Text, M L0)], [SExp])
+                split [] = pure ([], [])
+                split (e:es) = isDefine e >>= \case
+                    Nothing -> pure ([], e:es)
+                    Just d  -> first (d:) <$> split es
+            (binds, body) <- split sexps
+            withExtendEnv (HashMap.fromList (map (,DLocal) (map fst binds))) $
+                case binds of
+                  [] -> begin <$> traverse go body
+                  _  -> ELetRec <$> traverse sequence binds <*> fmap begin (traverse go body)
 
         projectBegin :: SExp -> M L0
         projectBegin (SList (_ : es)) = EBegin <$> traverse go es
@@ -119,13 +154,14 @@ instance Project L0 where
             env <- getEnv
             case x of
               SList (_ : SList (traverse (preview _SSymbol) -> Just (name : args)) : body) -> do
-                  extendEnv $ HashMap.fromList (map (,DGlobal) args)
-                  body' <- traverse go body
-                  pure $ EDefine name $ ELambda args (begin body')
+                  extendEnv (HashMap.singleton name DGlobal)
+                  withExtendEnv (HashMap.fromList (map (,DLocal) args)) $ do
+                      body' <- projectBody body
+                      pure $ EGlobalSet name $ ELambda args body'
               SList [_, SSymbol name, e] -> do
                   extendEnv $ HashMap.singleton name DGlobal
                   e' <- go e
-                  pure $ EDefine name e'
+                  pure $ EGlobalSet name e'
               _ -> prjError "Invalid define syntax"
 
         projectSet :: SExp -> M L0
@@ -135,6 +171,7 @@ instance Project L0 where
               SList [_, SSymbol x, e]
                 | Just DLocal <- HashMap.lookup x env -> ELocalSet x <$> go e
                 | Just DGlobal <- HashMap.lookup x env -> EGlobalSet x <$> go e
+                | Nothing <- HashMap.lookup x env -> EGlobalSet x <$> go e
               _ -> prjError "Invalid set! syntax"
 
         projectIf :: SExp -> M L0
@@ -160,11 +197,12 @@ instance Project L0 where
                 | Just bs <- traverse letBind binds -> do
                     let env' = map ((,DLocal) . fst) bs
                     bs' <- traverse (traverse go) bs
-                    body' <- withExtendEnv (HashMap.fromList env') $ traverse go body
-                    pure $ ELet bs' (begin body')
+                    body' <- withExtendEnv (HashMap.fromList env') $ projectBody body
+                    pure $ ELet bs' body'
+              _ -> prjError "Invalid let syntax"
 
-        projectLetstar :: SExp -> M L0
-        projectLetstar sexp = do
+        projectLetStar :: SExp -> M L0
+        projectLetStar sexp = do
             env <- getEnv
             case sexp of
               SList (_ : SList binds : body)
@@ -174,43 +212,83 @@ instance Project L0 where
                             withExtendEnv (HashMap.singleton x DLocal) $ do
                                 e' <- go e
                                 ELet [(x, e')] <$> acc
-                     in foldl f (begin <$> traverse go body) bs
+                     in foldl f (projectBody body) bs
+              _ -> prjError "Invalid let* syntax"
 
-        projectLetrec :: SExp -> M L0
-        projectLetrec sexp = do
+        projectLetRec :: SExp -> M L0
+        projectLetRec sexp = do
             env <- getEnv
             case sexp of
               SList (_ : SList binds : body)
                 | Just bs <- traverse letBind binds -> do
                     let env' = HashMap.fromList $ map ((,DLocal) . fst) bs
                     bs' <- withExtendEnv env' $ traverse (traverse go) bs
-                    body' <- withExtendEnv env' $ traverse go body
-                    pure $ ELetRec bs' (begin body')
+                    body' <- withExtendEnv env' $ projectBody body
+                    pure $ ELetRec bs' body'
+              _ -> prjError "Invalid letrec syntax"
 
-        projectLetrecstar :: SExp -> M L0
-        projectLetrecstar sexp = do
+        -- Normal letrec is expanded the same way as Scheme's letrec*
+        projectLetRecStar :: SExp -> M L0
+        projectLetRecStar sexp = do
             env <- getEnv
             case sexp of
               SList (_ : SList binds : body)
                 | Just bs <- traverse letBind binds -> do
                     let env' = HashMap.fromList $ map ((,DLocal) . fst) bs
                     bs' <- withExtendEnv env' $ traverse (traverse go) bs
-                    body' <- withExtendEnv env' $ traverse go body
-                    pure $ ELetRecStar bs' (begin body')
+                    body' <- withExtendEnv env' $ projectBody body
+                    pure $ ELetRec bs' body'
+              _ -> prjError "Invalid letrec* syntax"
+
+        projectWhen :: SExp -> M L0
+        projectWhen = \case
+            SList (_ : cond : rest) | not (null rest) ->
+                EIf <$> go cond <*> fmap begin (traverse go rest) <*> pure (EPrimApply (prim "void") [])
+            _ -> prjError "Invalid when syntax"
+
+        projectUnless :: SExp -> M L0
+        projectUnless = \case
+            SList (_ : cond : rest) | not (null rest) ->
+                EIf <$> go cond <*> pure (EPrimApply (prim "void") []) <*> fmap begin (traverse go rest)
+            _ -> prjError "Invalid unless syntax"
+
+        projectError :: Text -> SExp -> M L0
+        projectError msg _ = prjError $ "Invalid " <> msg <> " syntax"
+
+        projectQuasi :: SExp -> M L0
+        projectQuasi sexp = do
+            undefined
+            -- env <- getEnv
+            -- let isSpecial x = HashMap.member x env
+            -- let expand = \case
+                    -- SList [SSymbol "unquote", x]
+                      -- | isSpecial "unquote" -> pure $ EDatum x
+                    -- SList [SSymbol "unquote-splicing", x]
+                      -- | isSpecial "unquote-splicing" -> prjError "Invalid unquote-splicing syntax"
+                    -- SList [SSymbol "quasiquote", x]
+                      -- | isSpecial "quasiquote" -> expand 
+                    -- _ -> prjError "Invalid quasiquote syntax"
+            -- expand sexp
 
         defaultEnv :: Env
-        defaultEnv = HashMap.fromList $ map (\x -> (x, DSpecial x)) $
-            [ "lambda"
-            , "begin"
-            , "quote"
-            , "define"
-            , "set!"
-            , "if"
-            , "while"
-            , "let"
-            , "let*"
-            , "letrec"
-            , "letrec*"
+        defaultEnv = HashMap.fromList
+            [ ("lambda",           DSpecial projectLambda)
+            , ("begin",            DSpecial projectBegin)
+            , ("quote",            DSpecial projectQuote)
+            , ("define",           DSpecial projectDefine)
+            , ("set!",             DSpecial projectSet)
+            , ("if",               DSpecial projectIf)
+            , ("while",            DSpecial projectWhile)
+            , ("let",              DSpecial projectLet)
+            , ("let*",             DSpecial projectLetStar)
+            , ("letrec",           DSpecial projectLetRec)
+            , ("letrec*",          DSpecial projectLetRecStar)
+            , ("when",             DSpecial projectWhen)
+            , ("unless",           DSpecial projectUnless)
+            -- TODO
+            , ("unquote",          DSpecial (projectError "unquote"))
+            , ("unquote-splicing", DSpecial (projectError "unquote-splicing"))
+            , ("quasiquote",       DSpecial (projectError "quasiquote"))
             ]
 
         go :: SExp -> M L0
@@ -218,24 +296,14 @@ instance Project L0 where
             env <- getEnv
             case sexp of
               SSymbol x
-                | Just DGlobal <- HashMap.lookup x env -> pure $ EGlobalVar x
                 | Just DSpecial{} <- HashMap.lookup x env -> prjError $ "Invalid " <> x <> " synax"
-                | otherwise -> pure $ ELocalVar x
-              SList (SSymbol x : _)
-                | Just (DSpecial n) <- HashMap.lookup x env ->
-                    case n of
-                      "begin"   -> projectBegin      sexp
-                      "lambda"  -> projectLambda     sexp
-                      "quote"   -> projectQuote      sexp
-                      "define"  -> projectDefine     sexp
-                      "set!"    -> projectSet        sexp
-                      "if"      -> projectIf         sexp
-                      "while"   -> projectWhile      sexp
-                      "let"     -> projectLet        sexp
-                      "let*"    -> projectLetstar    sexp
-                      "letrec"  -> projectLetrec     sexp
-                      "letrec*" -> projectLetrecstar sexp
-                      _ -> error $ "Invalid special denotation: " ++ show n
+                | Just DLocal <- HashMap.lookup x env -> pure $ ELocalVar x
+                | Nothing <- HashMap.lookup x env, Just p <- parsePrim x -> pure $ etaExpand p
+                | otherwise -> pure $ EGlobalVar x
+              SList (SSymbol x : args)
+                | Just (DSpecial f) <- HashMap.lookup x env -> f sexp
+                | Nothing <- HashMap.lookup x env, Just p <- parsePrim x ->
+                    EPrimApply p <$> traverse go args
               SList (f:args) -> EApply <$> go f <*> traverse go args
               SChar{}       -> pure $ EDatum sexp
               SString{}     -> pure $ EDatum sexp

@@ -11,7 +11,7 @@
 #include <svm/run.h>
 
 int main(int argc, char *argv[]) {
-    printf("SVM: version %s\n", SVM_VERSION);
+    /* printf("SVM: version %s\n", SVM_VERSION); */
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <file>\n", argv[0]);

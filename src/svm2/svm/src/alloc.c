@@ -5,8 +5,8 @@
 
 void *svm_default_allocator(void *p, size_t oldsz, size_t newsz, void *ud)
 {
-    (void)oldsz;
-    (void)ud;
+    SVM_UNUSED(oldsz);
+    SVM_UNUSED(ud);
     if (newsz == 0) {
         free(p);
         return NULL;
