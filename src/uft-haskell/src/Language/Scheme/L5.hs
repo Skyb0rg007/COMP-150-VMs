@@ -1,41 +1,28 @@
-
+{-# OPTIONS_GHC -Wall #-}
 -- Assembly codegen
 module Language.Scheme.L5
-    ( module Language.Scheme.L5
+    ( L5 (..)
+    , L5Constant
     , L1Constant (..)
     ) where
 
-import           Control.Lens               (preview)
 import           Control.Monad
-import           Control.Monad.IO.Class
 import           Control.Monad.Trans        (lift)
 import           Control.Monad.Trans.Except
 import           Control.Monad.Trans.Accum
-import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.State
 import           Data.Foldable (traverse_)
-import           Data.Bifunctor             (first)
 import           Data.DList                 (DList)
 import qualified Data.DList                 as DList
-import           Data.Functor.Foldable      hiding (embed, project)
-import qualified Data.Functor.Foldable      as Foldable
-import           Data.Functor.Foldable.TH
-import           Data.HashMap.Strict        (HashMap)
-import qualified Data.HashMap.Strict        as HashMap
-import           Data.HashSet               (HashSet)
-import qualified Data.HashSet               as HashSet
 import           Data.Maybe
 import           Data.Text                  (Text)
-import           Data.Text.Prettyprint.Doc
-import           Data.Unique
-import           Debug.Trace
+-- import           Debug.Trace
 import           Language.Scheme.L4         (L1Constant (..), L4)
 import qualified Language.Scheme.L4         as L4
 import           Language.Scheme.SExp.Ast
 import           Language.Scheme.SExp.Class
-import           System.IO.Unsafe           (unsafePerformIO)
-import           Uft.Primitives
-import           Uft.Util
+import           Language.Scheme.Primitives
+import           Language.Scheme.Util
 
 type L5Constant = L1Constant
 
@@ -67,14 +54,16 @@ instance Project L5 where
         where
             forEffect :: L4 -> AccumT (DList L5) (StateT Int (Except Text)) ()
             forEffect = \case
-                L4.EConst k -> pure ()
-                L4.EName x -> pure ()
+                L4.EConst _ -> pure ()
+                L4.EName _ -> pure ()
                 L4.EPrim p args
-                  | _prim_kind p == HasEffect -> cmd p args
-                  | otherwise                 -> pure ()
+                  | _prim_effectful p, _prim_destreg p -> error $ "Calling prim " ++ show (_prim_name p) ++ " for effect, but it requires a dest reg"
+                  | _prim_effectful p                  -> cmd p args
+                  | otherwise                          -> pure ()
                 L4.EPrimLit p args lit
-                  | _prim_kind p == HasEffect -> cmdLit p args lit
-                  | otherwise                 -> pure ()
+                  | _prim_effectful p, _prim_destreg p -> error $ "Calling prim " ++ show (_prim_name p) ++ " for effect, but it requires a dest reg"
+                  | _prim_effectful p                  -> cmdLit p args lit
+                  | otherwise                          -> pure ()
                 L4.EFuncall f args
                   | consecutive (f:args) -> cmd (prim "call") [f, f, fromMaybe f (lastMay args)]
                   | otherwise            -> error $ "Invalid funcall: not consecutive " ++ show f ++ " " ++ show args
@@ -106,8 +95,8 @@ instance Project L5 where
                 L4.EClosure _ _ -> pure ()
                 L4.ELocalSet x e -> toReg x e
 
-            return :: L4 -> AccumT (DList L5) (StateT Int (Except Text)) ()
-            return = \case
+            return_ :: L4 -> AccumT (DList L5) (StateT Int (Except Text)) ()
+            return_ = \case
                 L4.EName x -> cmd (prim "return") [x]
                 L4.EFuncall f args
                   | consecutive (f:args) -> cmd (prim "tailcall") [f, fromMaybe f (lastMay args)]
@@ -115,15 +104,15 @@ instance Project L5 where
                 L4.EIf x e1 e2 -> do
                     l <- freshLabel "if-false"
                     ifGoto x l
-                    return e2
+                    return_ e2
                     deflabel l
-                    return e1
+                    return_ e1
                 L4.ESeq e1 e2 -> do
                     forEffect e1
-                    return e2
+                    return_ e2
                 L4.ELet x e1 e2 -> do
                     toReg x e1
-                    return e2
+                    return_ e2
                 e -> do
                     toReg 0 e
                     cmd (prim "return") [0]
@@ -133,11 +122,11 @@ instance Project L5 where
                 L4.EConst k -> loadLiteral r k
                 L4.EName n  -> cmd (prim "copyreg") [r, n]
                 L4.EPrim p args 
-                  | SetsRegister == _prim_kind p -> cmd p (r : args)
-                  | otherwise                    -> cmd p args >> loadLiteral r (KBool False)
+                  | _prim_destreg p -> cmd p (r : args)
+                  | otherwise       -> cmd p args >> loadLiteral r (KBool False)
                 L4.EPrimLit p args lit 
-                  | SetsRegister == _prim_kind p -> cmdLit p (r : args) lit
-                  | otherwise                    -> cmdLit p args lit >> loadLiteral r (KBool False)
+                  | _prim_destreg p -> cmdLit p (r : args) lit
+                  | otherwise       -> cmdLit p args lit >> loadLiteral r (KBool False)
                 L4.EFuncall f args
                   | consecutive (f:args) -> cmd (prim "call") [r, f, fromMaybe f (lastMay args)]
                   | otherwise            -> error $ "Invalid funcall: not consecutive " ++ show f ++ " " ++ show args
@@ -160,9 +149,9 @@ instance Project L5 where
                     forEffect (L4.EWhile x e1 e2)
                     loadLiteral r (KBool False)
                 L4.ECaptured n -> cmd (prim "getclslot") [r, 0, n]
-                L4.EClosure (args, body) [] -> loadfunction r (length args) $ return body
+                L4.EClosure (args, body) [] -> loadfunction r (length args) $ return_ body
                 L4.EClosure (args, body) captured -> do
-                    loadfunction r (length args) $ return body
+                    loadfunction r (length args) $ return_ body
                     cmd (prim "closure") [r, r, length captured]
                     forM_ (zip [0..] captured) $ \(i, x) ->
                         cmd (prim "setclslot") [r, x, i]

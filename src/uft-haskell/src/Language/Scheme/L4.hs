@@ -1,37 +1,22 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wall -Wno-name-shadowing #-}
 -- Register allocation and k-normalization
 module Language.Scheme.L4
-    ( module Language.Scheme.L4
+    ( L4 (..)
+    , L4Constant
     , L1Constant (..)
     ) where
 
-import           Control.Lens               (preview)
 import           Control.Monad
-import           Control.Monad.IO.Class
-import           Control.Monad.Trans        (lift)
-import           Control.Monad.Trans.Except
-import           Control.Monad.Trans.Reader
-import           Control.Monad.Trans.State
-import           Data.Bifunctor             (first)
-import           Data.Functor.Foldable      hiding (embed, project)
-import qualified Data.Functor.Foldable      as Foldable
-import           Data.Functor.Foldable.TH
 import           Data.HashMap.Strict        (HashMap)
 import qualified Data.HashMap.Strict        as HashMap
-import           Data.HashSet               (HashSet)
-import qualified Data.HashSet               as HashSet
-import           Data.Maybe
-import           Data.Text                  (Text)
-import           Data.Text.Prettyprint.Doc
 import           Data.Unique
-import           Debug.Trace
+-- import           Debug.Trace
 import           Language.Scheme.L3         (L1Constant (..), L3)
 import qualified Language.Scheme.L3         as L3
 import           Language.Scheme.SExp.Ast
 import           Language.Scheme.SExp.Class
-import           System.IO.Unsafe           (unsafePerformIO)
-import           Uft.Primitives
-import           Uft.Util
+import           Language.Scheme.Primitives
+import           Language.Scheme.Util
 
 type L4Constant = L1Constant
 
@@ -80,23 +65,27 @@ smallest (RS n) = n
 (-:-) (RS n) r = RS (max n r + 1)
 
 bindAnyReg
-    :: forall r m. Monad m
+    :: Monad m
     => RegSet
     -> L4
     -> (Int -> m L4)
     -> m L4
-bindAnyReg a (EName n) k = k n
+bindAnyReg _ (EName n) k = k n
 bindAnyReg a e k = bindSmallest a e k
 
 bindSmallest
-    :: forall r m. Monad m
+    :: Monad m
     => RegSet
     -> L4
     -> (Int -> m L4)
     -> m L4
 bindSmallest a e k =
     let r = smallest a
-     in ELet r e <$> k r
+     in elet r e <$> k r
+
+elet :: Int -> L4 -> L4 -> L4
+elet y (ELet x e1 e2) e3 = ELet x e1 (ELet y e2 e3)
+elet x e1 e2 = ELet x e1 e2
 
 nbRegsWith
     :: Monad m
@@ -106,14 +95,11 @@ nbRegsWith
     -> [a]
     -> ([Int] -> m L4)
     -> m L4
-nbRegsWith normalize p a xs k = go a xs where
-    go a [] = k []
+nbRegsWith normalize p a0 xs k = go a0 xs where
+    go _ [] = k []
     go a (e:es) = do
         e' <- normalize a e
         p a e' $ \r -> nbRegsWith normalize p (a -:- r) es (k . (r:))
-
-instance Show Unique where
-    show u = "#" ++ show (hashUnique u)
 
 knormalize
     :: Monad m
@@ -135,11 +121,11 @@ knormalize rho a = \case
         let r = rho HashMap.! x
          in ELocalSet r <$> knormalize rho a e
     L3.EGlobalVar x ->
-        pure $ EPrimLit (prim "getglobal") [] (KSymbol x)
+        pure $ EPrimLit (prim "get-global") [] (KSymbol x)
     L3.EGlobalSet x e -> do
         e' <- knormalize rho a e
         bindAnyReg a e' $ \r ->
-            pure $ EPrimLit (prim "setglobal") [r] (KSymbol x)
+            pure $ EPrimLit (prim "set-global!") [r] (KSymbol x)
     L3.EBegin [] -> pure $ EPrim (prim "void") []
     L3.EBegin [e] -> knormalize rho a e
     L3.EBegin (e:es) -> ESeq <$> knormalize rho a e <*> knormalize rho a (L3.EBegin es)
@@ -164,7 +150,7 @@ knormalize rho a = \case
     L3.EClosedVar n -> pure $ ECaptured n
     L3.ELocalVar x -> 
         case HashMap.lookup x rho of
-          Nothing -> error $ "Missing " ++ show x ++ " in " ++ show rho
+          Nothing -> error $ "Missing #" ++ show (hashUnique x)
           Just n -> pure (EName n)
     where
         removeRegisters rs [] = rs
@@ -175,3 +161,4 @@ knormalize rho a = \case
                 (rho', rs') = foldl f (rho, rs) args
                 consec = (rho' HashMap.!) <$> args
              in (consec,) <$> knormalize rho' rs' body
+

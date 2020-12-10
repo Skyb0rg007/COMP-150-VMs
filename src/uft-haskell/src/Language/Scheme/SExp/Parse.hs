@@ -31,10 +31,6 @@ import           GHC.Float                          (int2Double)
 import           Language.Scheme.SExp.Ast
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
--- import           Type.OpenADT
--- import           Uft.SExpr.Types
--- import           Uft.Naming
--- import           Text.Megaparsec.Debug (dbg)
 
 -- | Parser type
 -- No custom error type: 'Void'

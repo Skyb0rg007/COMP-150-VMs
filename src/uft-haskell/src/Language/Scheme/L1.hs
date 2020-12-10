@@ -1,24 +1,27 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wall #-}
 -- Desugar letrec and datums
 module Language.Scheme.L1
-    ( module Language.Scheme.L1
+    ( L1 (..)
+    , L1Constant (..)
     ) where
 
-import           Control.Lens               (preview)
+-- import           Control.Lens               (preview)
 import           Control.Monad
-import           Control.Monad.Trans        (lift)
+-- import           Control.Monad.Trans        (lift)
 import           Control.Monad.Trans.Except
 import           Control.Monad.Trans.State
-import           Data.Functor.Foldable.TH
-import           Data.Bifunctor             (first)
-import           Data.HashMap.Strict        (HashMap)
-import qualified Data.HashMap.Strict        as HashMap
+-- import           Data.Functor.Foldable.TH
+-- import           Data.Bifunctor             (first)
+-- import           Data.HashMap.Strict        (HashMap)
+-- import qualified Data.HashMap.Strict        as HashMap
 import           Data.Text                  (Text)
-import           Language.Scheme.L0     (L0)
-import qualified Language.Scheme.L0     as L0
+import           Data.Unique
+import           Language.Scheme.L0         (L0)
+import qualified Language.Scheme.L0         as L0
+import           Language.Scheme.Primitives
 import           Language.Scheme.SExp.Ast
 import           Language.Scheme.SExp.Class
-import           Uft.Primitives
+import           Language.Scheme.Util       (tshow)
 
 data L1Constant
     = KChar Char
@@ -30,19 +33,17 @@ data L1Constant
 
 data L1
     = EConst L1Constant
-    | ELet [(Text, L1)] L1
-    | ELambda [Text] L1
+    | ELet [(Unique, L1)] L1
+    | ELambda [Unique] L1
     | EBegin [L1]
-    | ELocalSet Text L1
+    | ELocalSet Unique L1
     | EGlobalSet Text L1
     | EIf L1 L1 L1
     | EWhile L1 L1
-    | ELocalVar Text
+    | ELocalVar Unique
     | EGlobalVar Text
     | EApply L1 [L1]
     | EPrimApply Prim [L1]
-
-makeBaseFunctor ''L1
 
 instance Embed L1Constant where
     embed = \case
@@ -57,18 +58,19 @@ instance Embed L1 where
     embed = \case
         EConst k          -> embed k
         ELet bs e         -> SList ["let", SList (embedBinds bs), embed e]
-        ELambda args e    -> SList ["lambda", SList (map SSymbol args), embed e]
+        ELambda args e    -> SList ["lambda", SList (map unique args), embed e]
         EBegin es         -> SList ("begin" : map embed es)
-        ELocalSet x e     -> SList ["set!", SSymbol x, embed e]
+        ELocalSet x e     -> SList ["set!", unique x, embed e]
         EGlobalSet x e    -> SList ["set-global!", SSymbol x, embed e]
         EIf e1 e2 e3      -> SList ["if", embed e1, embed e2, embed e3]
         EWhile e1 e2      -> SList ["while", embed e1, embed e2]
-        ELocalVar x       -> SSymbol x
+        ELocalVar x       -> unique x
         EGlobalVar x      -> SList ["global", SSymbol x]
         EApply f args     -> SList (embed f : map embed args)
         EPrimApply p args -> SList (SSymbol (_prim_name p) : map embed args)
         where
-            embedBinds = map $ \(x, e) -> SList [SSymbol x, embed e]
+            unique u = SSymbol $ "x" <> tshow (hashUnique u)
+            embedBinds = map $ \(x, e) -> SList [unique x, embed e]
 
 instance Project L1 where
     project = traverse desugar <=< project
@@ -104,7 +106,7 @@ desugar = runExcept . flip evalStateT 0 . go where
         SSymbol s -> EConst (KSymbol s)
         SEmpty    -> EConst KEmpty
         SPair a b -> EPrimApply (prim "cons") [datum a, datum b]
-        SVector v -> error "Vector literals nyi"
-        SByteVector bv -> error "Bytevector literals nyi"
+        SVector _ -> error "Vector literals nyi"
+        SByteVector _ -> error "Bytevector literals nyi"
 
 

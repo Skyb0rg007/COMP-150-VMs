@@ -19,10 +19,10 @@ const char *svm_value_tag_name(enum svm_value_tag_t tag) {
         [SVM_VALUE_TAG_CLOSURE]      = "closure",
         [SVM_VALUE_TAG_CONTINUATION] = "continuation"
     };
-    if (!SVM_BETWEEN(tag, 0, SVM_ARRAY_SIZE(mapping))) {
-        return "unknown svm tag";
-    } else {
+    if (0 <= tag && tag < SVM_ARRAY_SIZE(mapping)) {
         return mapping[tag];
+    } else {
+        return "unknown svm tag";
     }
 }
 

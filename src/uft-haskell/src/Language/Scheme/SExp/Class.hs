@@ -1,4 +1,4 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Language.Scheme.SExp.Class
     ( Project (..)
@@ -7,7 +7,6 @@ module Language.Scheme.SExp.Class
 
 import           Data.Text                (Text)
 import           Language.Scheme.SExp.Ast (SExp)
-import           Data.Text.Prettyprint.Doc
 
 class Project x where
     project :: [SExp] -> Either Text [x]

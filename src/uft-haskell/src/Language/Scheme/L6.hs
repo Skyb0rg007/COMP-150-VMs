@@ -1,46 +1,30 @@
-
+{-# OPTIONS_GHC -Wall #-}
 -- Label elimination + object code generation
 module Language.Scheme.L6
-    ( module Language.Scheme.L6
+    ( L6 (..)
+    , L6Constant
+    , L1Constant (..)
+    , compileObjProg
     ) where
 
-import           Data.Char              (ord)
-import qualified Data.Text              as Text
-import qualified Data.Text.Lazy         as Lazy (Text)
-import qualified Data.Text.Lazy         as Lazy.Text
-import           Data.Text.Lazy.Builder (Builder)
-import qualified Data.Text.Lazy.Builder as B
-import           Control.Lens               (preview)
 import           Control.Monad
-import           Control.Monad.IO.Class
-import           Control.Monad.Trans        (lift)
-import           Control.Monad.Trans.Accum
-import           Control.Monad.Trans.Except
-import           Control.Monad.Trans.Reader
-import           Control.Monad.Trans.State
-import           Data.Bifunctor             (first)
+import           Data.Char                  (ord)
 import           Data.DList                 (DList)
 import qualified Data.DList                 as DList
-import           Data.Foldable              (traverse_)
-import           Data.Functor.Foldable      hiding (embed, project)
-import qualified Data.Functor.Foldable      as Foldable
-import           Data.Functor.Foldable.TH
 import           Data.HashMap.Strict        (HashMap)
 import qualified Data.HashMap.Strict        as HashMap
-import           Data.HashSet               (HashSet)
-import qualified Data.HashSet               as HashSet
-import           Data.Maybe
 import           Data.Text                  (Text)
-import           Data.Text.Prettyprint.Doc
-import           Data.Unique
-import           Debug.Trace
+import qualified Data.Text                  as Text
+import qualified Data.Text.Lazy             as Lazy.Text
+import           Data.Text.Lazy.Builder     (Builder)
+import qualified Data.Text.Lazy.Builder     as B
+-- import           Debug.Trace
 import           Language.Scheme.L5         (L1Constant (..), L5)
 import qualified Language.Scheme.L5         as L5
 import           Language.Scheme.SExp.Ast
 import           Language.Scheme.SExp.Class
-import           System.IO.Unsafe           (unsafePerformIO)
-import           Uft.Primitives
-import           Uft.Util
+import           Language.Scheme.Primitives
+import           Language.Scheme.Util
 
 type L6Constant = L1Constant
 
@@ -75,7 +59,7 @@ instance Project L6 where
             -> Either Text (Int, HashMap Text Int)
         collect (n, m) = \case
             L5.DefLabel lbl
-              | Just n' <- HashMap.lookup lbl m -> Left $ "Duplicate label " <> lbl
+              | Just _ <- HashMap.lookup lbl m -> Left $ "Duplicate label " <> lbl
               | otherwise -> pure (n, HashMap.insert lbl n m)
             _ -> pure (succ n, m)
 
@@ -85,7 +69,7 @@ instance Project L6 where
             -> L5
             -> Either Text (Int, DList L6)
         replace m (n, instrs) = \case
-            L5.DefLabel lbl -> pure (n, instrs)
+            L5.DefLabel _ -> pure (n, instrs)
             L5.GotoLabel lbl
               | Just n' <- HashMap.lookup lbl m -> pure (succ n, instrs `DList.snoc` GotoOffset (n' - n - 1))
               | otherwise -> Left $ "Undefined label " <> lbl
@@ -123,10 +107,10 @@ compileInstr = \case
         <> mconcat (map ((<> "\n") . compileInstr) body)
         <> "halt"
     Cmd p args ->
-        B.fromText (_prim_name p) <>
+        B.fromText (_prim_voName p) <>
         foldl (\acc arg -> acc <> " " <> bshow arg) "" args
     CmdLit p args lit ->
-        B.fromText (_prim_name p) <>
+        B.fromText (_prim_voName p) <>
         foldl (\acc arg -> acc <> " " <> bshow arg) "" args <>
         " " <> compileLiteral lit
 

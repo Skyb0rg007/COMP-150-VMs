@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 83f87a5f59328e14563c12186b81d60f9cf397b28502bc79cb4a3244cfcc2837
+-- hash: 5e092df8a7c67b27d7ed6cd5143cd667285d7712950a54adcad045b0adaf5922
 
 name:           uft
 version:        0.1.0.0
@@ -26,8 +26,6 @@ source-repository head
 
 library
   exposed-modules:
-      Data.Sum
-      Data.Sum.TH
       Language.Scheme.L0
       Language.Scheme.L1
       Language.Scheme.L2
@@ -35,34 +33,11 @@ library
       Language.Scheme.L4
       Language.Scheme.L5
       Language.Scheme.L6
-      Language.Scheme.Name
+      Language.Scheme.Primitives
       Language.Scheme.SExp.Ast
       Language.Scheme.SExp.Class
       Language.Scheme.SExp.Parse
-      Type.Hyper
-      Type.List
-      Type.OpenADT
-      Type.OpenADT.TH
-      Uft.Asm.Ast
-      Uft.Asm.LabelElim
-      Uft.Asm.ToVO
-      Uft.KNormal.ClosureConvert
-      Uft.KNormal.Types
-      Uft.Language.L0
-      Uft.Macroexpand
-      Uft.Naming
-      Uft.Parse
-      Uft.Pretty
-      Uft.Primitives
-      Uft.SExpr.Parse
-      Uft.SExpr.Types
-      Uft.UScheme.KNormalize
-      Uft.UScheme.Types
-      Uft.Util
-      Uft.VScheme.Disambiguate
-      Uft.VScheme.PrimPrelude
-      Uft.VScheme.QuoteElim
-      Uft.VScheme.Types
+      Language.Scheme.Util
   other-modules:
       Paths_uft
   hs-source-dirs:
@@ -113,7 +88,6 @@ library
 executable uft-exe
   main-is: Main.hs
   other-modules:
-      OldMain
       Paths_uft
   hs-source-dirs:
       app

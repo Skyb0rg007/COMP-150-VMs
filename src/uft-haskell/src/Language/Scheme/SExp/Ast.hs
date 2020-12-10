@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wall #-}
 {-
    Module:      Language.Scheme.SExp.Ast
    Description: The initial parsed language
@@ -12,32 +12,22 @@
    Datum labels are not supported.
 -}
 module Language.Scheme.SExp.Ast
-    ( module Language.Scheme.SExp.Ast
+    ( SExp (SChar, SString, SSymbol, SBool, SNum, SByteVector, SEmpty, SPair, SVector, SList, SList')
+    , _SSymbol
     ) where
 
-import           Control.DeepSeq      (NFData)
-import           Control.Lens.TH      (makePrisms)
-import           Data.Char            (chr, isAlphaNum, isPrint, ord)
-import           Data.Deriving
-import           Data.Functor.Classes
-import           Data.Hashable        (Hashable)
-import           Data.Kind            (Type)
-import           Data.List.NonEmpty   (NonEmpty ((:|)))
-import           Data.Monoid          (Endo (Endo, appEndo))
-import           Data.String          (IsString (fromString))
-import           Data.Text            (Text)
-import           Data.Text            (Text)
-import qualified Data.Text            as Text
-import           Data.Word            (Word8)
-import           GHC.Exts             (IsList (..))
-import           GHC.Generics         (Generic)
--- import           Language.Scheme.Name
-import           Numeric              (showGFloat, showIntAtBase)
-import           Text.Read            (Read (readPrec))
-import           Type.OpenADT
-import           Type.OpenADT.TH
-import           Uft.Pretty
-import           Uft.Util
+import           Control.DeepSeq           (NFData)
+import           Control.Lens
+import           Data.Char                 (isAlphaNum, isPrint, ord)
+import           Data.String               (IsString (fromString))
+import           Data.Text                 (Text)
+import qualified Data.Text                 as Text
+import           Data.Text.Prettyprint.Doc hiding (SimpleDocStream (..))
+import           Data.Word                 (Word8)
+import           GHC.Exts                  (IsList (..))
+import           GHC.Generics              (Generic)
+import           Numeric                   (showGFloat)
+import           Language.Scheme.Util
 
 -- * S-expressions
 -- The language is first parsed as a sequence of s-expressions
@@ -52,7 +42,7 @@ data SExp
     | SEmpty
     | SPair SExp SExp
     | SVector [SExp]
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Generic, NFData)
 
 -- * Pretty-printing
 
@@ -145,8 +135,18 @@ instance Pretty SExp where
         SList ["quasiquote", x]       -> "`"  <> pretty x
         SList ["unquote", x]          -> ","  <> pretty x
         SList ["unquote-splicing", x] -> ",@" <> pretty x
-        SList es       -> parens $ hsep (map pretty es)
+        SList []       -> "()"
+        SList (e:es)   -> parens $ group $ flatAlt
+            (vsep [pretty e, indent 2 (align (vsep (map pretty es)))])
+            (hsep (map pretty (e:es)))
         SList' es e    -> parens $ hsep (map pretty es) <+> "." <+> pretty e
+        SEmpty  -> error "Shouldn't match"
+        SPair{} -> error "Shouldn't match"
 
-makePrisms ''SExp
+_SSymbol :: Prism' SExp Text
+_SSymbol = prism' SSymbol $ \case
+    SSymbol x -> Just x
+    _         -> Nothing
+
+-- makePrisms ''SExp
 

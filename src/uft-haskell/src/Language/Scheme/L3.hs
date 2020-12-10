@@ -1,35 +1,23 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wall #-}
 -- Closure conversion
 module Language.Scheme.L3
-    ( module Language.Scheme.L3
+    ( L3 (..)
+    , L3Constant
     , L1Constant (..)
     ) where
 
-import           Control.Lens               (preview)
-import           Control.Monad
-import           Control.Monad.Trans        (lift)
-import           Control.Monad.Trans.Except
-import           Control.Monad.Trans.State
-import           Control.Monad.Trans.Reader
-import           Control.Monad.IO.Class
-import           Data.Bifunctor             (first)
-import           Data.Functor.Foldable      hiding (embed, project)
-import qualified Data.Functor.Foldable      as Foldable
-import           Data.Functor.Foldable.TH
 import           Data.HashMap.Strict        (HashMap)
 import qualified Data.HashMap.Strict        as HashMap
 import           Data.HashSet               (HashSet)
 import qualified Data.HashSet               as HashSet
 import           Data.Text                  (Text)
 import           Data.Unique
-import           Data.Maybe
 import           Language.Scheme.L2         (L2, L1Constant (..))
 import qualified Language.Scheme.L2         as L2
 import           Language.Scheme.SExp.Ast
 import           Language.Scheme.SExp.Class
-import           System.IO.Unsafe           (unsafePerformIO)
-import           Uft.Primitives
-import           Uft.Util
+import           Language.Scheme.Primitives
+import           Language.Scheme.Util
 
 type L3Constant = L1Constant
 
@@ -47,8 +35,6 @@ data L3
     | EApply L3 [L3]
     | EPrimApply Prim [L3]
     | EClosure {- Lambda -} ([Unique], L3) {- Closed -} [L3]
-
-makeBaseFunctor ''L3
 
 instance Embed L3 where
     embed = \case
@@ -94,16 +80,16 @@ closureConvert env = go where
         L2.EPrimApply p args -> EPrimApply p (map go args)
     freeVars :: L2 -> HashSet Unique
     freeVars = \case
-        L2.EConst k -> mempty
+        L2.EConst _ -> mempty
         L2.ELet binds body -> foldMap (freeVars . snd) binds <> HashSet.difference (freeVars body) (HashSet.fromList (map fst binds))
         L2.ELambda args body -> HashSet.difference (freeVars body) (HashSet.fromList args)
         L2.EBegin es -> foldMap freeVars es
         L2.ELocalSet u e -> HashSet.insert u (freeVars e)
-        L2.EGlobalSet x e -> freeVars e
+        L2.EGlobalSet _ e -> freeVars e
         L2.EIf a b c -> freeVars a <> freeVars b <> freeVars c
         L2.EWhile a b -> freeVars a <> freeVars b
         L2.ELocalVar x -> HashSet.singleton x
-        L2.EGlobalVar x -> mempty
+        L2.EGlobalVar _ -> mempty
         L2.EApply f args -> freeVars f <> foldMap freeVars args
         L2.EPrimApply _ args -> foldMap freeVars args
 

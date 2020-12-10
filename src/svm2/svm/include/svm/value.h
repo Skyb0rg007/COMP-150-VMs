@@ -157,6 +157,8 @@ struct svm_cons_t {
 struct svm_function_t {
     struct svm_function_t *forwarded;
     int arity;
+    /* if arity >= 0, arity is the number of positional arguments */
+    /* if arity < 0, function is vararg, with number of positional arguments (arity - 1) */
     int size;
     int nregs;
     svm_instruction_t instructions[];

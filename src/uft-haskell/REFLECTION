@@ -1,0 +1,85 @@
+
+module05
+
+14.
+Prettyprinting [2 points].
+The indentation and line breaks for the vScheme prettyprinter are just barely tolerable.
+Improve them.
+
+    The pretty-printer uses indent sensitivity
+    In addition, the pretty-printer handles much more atoms, such as correctly
+    escaping strings, symbols, chars, etc.
+
+module09
+
+9.
+Let-floating [3 points].
+Use the equations of translation (the 𝓡 function) from module 6 to show when the following two expressions have the same translation:
+
+    let y = (let x = e₁ in e₂) in e₃
+    let x = e₁ in (let y = e₂ in e₃)
+
+  𝓡r⟦let y = (let x = e₁ in e₂) in e₃⟧
+= 𝓡y⟦let x = e₁ in e₂⟧ · 𝓡r⟦e₃⟧
+= 𝓡x⟦e₁⟧ · 𝓡y⟦e₂⟧ · 𝓡r⟦e₃⟧
+
+  𝓡r⟦let x = e₁ in (let y = e₂ in e₃)⟧
+= 𝓡x⟦e₁⟧ · 𝓡r⟦let y = e₂ in e₃⟧
+= 𝓡x⟦e₁⟧ · 𝓡y⟦e₂⟧ · 𝓡r⟦e₃⟧
+
+Then deploy your insight in your K‑normalizer to rewrite the first form to the second form.
+
+L4.hs - lines 84-88
+
+module10
+
+10.
+Mutable variables on the heap [3 points].
+You implement the Mutability.moveToHeap pass, which migrates every mutated, captured variable into a mutable reference cell that is allocated on the heap. The pointer to that cell is not mutated so it can safely be shared among multiple closures.
+You’ll need new primitives equivalent to the ref, !, and := primitives built into Standard ML; their implementations will be almost identical to mkclosure, getclslot, and setclslot, except they will operate on a struct VMBlock, not a closure.
+Demonstrate with the random-number generator or the resettable counter from chapter 2 of my book.
+
+This is implemented in L2.hs, lines 104-168.
+I use the names box, unbox, set-box! instead of ref, !, :=.
+
+module11
+
+11.
+Denser cons cells [2 points].
+Using a struct VMBlock to represent a cons cell has its advantages, but the machine word spent on nslots is wasted.
+Define a new type of payload that carries just two values, car and cdr, plus GC metadata.
+Make your system use that payload for cons cells.
+
+This is implemented value.h, line 152 for the struct definition.
+
+module12
+
+13.
+Imperative-friendly syntactic sugar [1.5 points].
+As syntactic sugar, implement the classic when and unless forms from Common Lisp.
+In addition, allow define, let, let*, and while to take a sequence of expressions in the body (implicit begin).
+All of this should be done in the parser; nothing else changes.
+
+This is implemented in L0.hs.
+I also implement local define, translating:
+
+  (define (foo bar)
+    (define baz 12)
+    (define (quux x) (asdf x 1))
+    (define (asdf x) (quux x))
+    (asdf baz)
+    (println 'hello))
+
+  =>
+
+  (define (foo bar)
+    (letrec* ((baz 12)
+              (quux (lambda (x) (asdf x 1)))
+              (asdf (lambda (x) (quux x))))
+      (begin
+        (asdf baz)
+        (println 'hello))))
+
+
+
+

@@ -23,12 +23,12 @@ import           Language.Scheme.L6                    (L6, compileObjProg)
 import           Language.Scheme.SExp.Ast
 import           Language.Scheme.SExp.Class
 import           Language.Scheme.SExp.Parse
--- import           Language.Scheme.L1.MacroExpand
+import           Language.Scheme.Util
 import           System.Environment
 import           System.Exit
 
 putDocLn :: Doc ann -> IO ()
-putDocLn x = putDoc x >> putStrLn ""
+putDocLn x = Text.IO.putStrLn (renderText x)
 
 usage :: IO a
 usage = do

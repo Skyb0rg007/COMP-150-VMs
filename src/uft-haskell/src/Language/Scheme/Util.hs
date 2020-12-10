@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-
-   Module:      Uft.Util
+   Module:      Language.Scheme.Util
    Description: Miscellaneous utilities used throughout Uft code
    Copyright:   Skye Soss 2020
    License:     MIT
@@ -9,11 +9,12 @@
    Portability: ghc-8.8.4
 -}
 
-module Uft.Util
+module Language.Scheme.Util
     ( 
     -- * Pretty printing
       prettyText
     , prettyLText
+    , renderText
     -- * Text utilities
     , tshow
     -- * Miscellaneous
@@ -21,8 +22,10 @@ module Uft.Util
     , derive
     , unsnoc
     , hashSetFromFoldable
+    , showHex'
     ) where
 
+import           Data.Char                             (chr, ord)
 import           Data.Foldable                         (foldlM)
 import           Data.Hashable                         (Hashable)
 import           Data.HashSet                          (HashSet)
@@ -33,14 +36,21 @@ import qualified Data.Text.Lazy                        as Lazy (Text)
 import           Data.Text.Prettyprint.Doc             (Pretty (pretty))
 import qualified Data.Text.Prettyprint.Doc             as Pretty
 import qualified Data.Text.Prettyprint.Doc.Render.Text as Pretty.Text
+import           Numeric                               (showIntAtBase)
 
 -- | Render a 'Pretty' value into 'Text'
 prettyText :: Pretty a => a -> Text
-prettyText = Pretty.Text.renderStrict . Pretty.layoutPretty Pretty.defaultLayoutOptions . pretty
+prettyText = Pretty.Text.renderStrict . Pretty.layoutPretty opts . pretty
+    where opts = Pretty.LayoutOptions { Pretty.layoutPageWidth = Pretty.AvailablePerLine 40 1 }
+
+renderText :: Pretty.Doc a -> Text
+renderText = Pretty.Text.renderStrict . Pretty.layoutPretty opts
+    where opts = Pretty.LayoutOptions { Pretty.layoutPageWidth = Pretty.AvailablePerLine 40 1 }
 
 -- | Render a 'Pretty' value into 'Lazy.Text'
 prettyLText :: Pretty a => a -> Lazy.Text
-prettyLText = Pretty.Text.renderLazy . Pretty.layoutPretty Pretty.defaultLayoutOptions . pretty
+prettyLText = Pretty.Text.renderLazy . Pretty.layoutPretty opts . pretty
+    where opts = Pretty.LayoutOptions { Pretty.layoutPageWidth = Pretty.AvailablePerLine 40 1 }
 
 -- | Convert a 'Show'-able value into 'Text'
 tshow :: Show a => a -> Text
@@ -73,4 +83,17 @@ hashSetFromFoldable
     => f a
     -> HashSet a
 hashSetFromFoldable = foldr HashSet.insert HashSet.empty
+
+-- | intToDigit, but using upper-case letters
+intToDigit' :: Int -> Char
+intToDigit' n
+  | n >= 0  && n <= 9  = chr (ord '0' + n)
+  | n >= 10 && n <= 15 = chr (ord 'A' + n)
+  | otherwise = error $ "intToDigit': not a digit " ++ show n
+
+-- | showHex, but using upper-case letters
+showHex' :: (Integral a, Show a) => a -> ShowS
+showHex' = showIntAtBase 16 intToDigit'
+{-# SPECIALIZE showHex' :: Int -> ShowS #-}
+
 

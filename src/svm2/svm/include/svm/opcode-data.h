@@ -395,3 +395,17 @@ X(cdr, Cdr, CDR, R2, "r%d := cdr r%d", "cdr <destreg> <pairreg>", {
     struct svm_cons_t *cons = svm_value_get_cons(&vm->current->regs[consreg]);
     vm->current->regs[destreg] = cons->cdr;
 })
+X(set_car, Set_Car, SET_CAR, R2, "r%d.car := r%d", "set_car <pairreg> <valreg>", {
+    uint8_t consreg = svm_instruction_x(instr);
+    uint8_t valreg  = svm_instruction_y(instr);
+
+    struct svm_cons_t *cons = svm_value_get_cons(&vm->current->regs[consreg]);
+    cons->car = vm->current->regs[valreg];
+})
+X(set_cdr, Set_Cdr, SET_CDR, R2, "r%d.cdr := r%d", "set_cdr <pairreg> <valreg>", {
+    uint8_t consreg = svm_instruction_x(instr);
+    uint8_t valreg  = svm_instruction_y(instr);
+
+    struct svm_cons_t *cons = svm_value_get_cons(&vm->current->regs[consreg]);
+    cons->cdr = vm->current->regs[valreg];
+})

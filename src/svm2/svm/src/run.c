@@ -30,7 +30,18 @@ void svm_run(struct svm_vm_t *vm, struct svm_function_t *fun)
         vm->current->instr++;
 
 #if SVM_DEBUG_LEVEL >= 2
-        fputs(" \033[38;5;214m", stderr);
+        /* 
+        fputs("\033[38;5;216m", stderr);
+        for (int i = 0; i < vm->current->nregs; i++) {
+            fprintf(stderr, "    regs[%d] = ", i);
+            svm_value_print(&vm->current->regs[i], stderr);
+            fprintf(stderr, "\n");
+        }
+        fprintf(stderr, "\n");
+         */
+
+        fputs("\033[38;5;214m", stderr);
+        fprintf(stderr, "  ");
         svm_instruction_print(instr, stderr);
         fputs("\033[m\n", stderr);
 #endif
